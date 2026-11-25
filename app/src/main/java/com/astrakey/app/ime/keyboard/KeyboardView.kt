@@ -190,7 +190,7 @@ class KeyboardView(
                 KeyAction.NUMBER_TOGGLE -> { numberRowOn = !numberRowOn; prefs.edit().putBoolean("number_row", numberRowOn).apply(); rebuildRows() }
                 KeyAction.LANGUAGE -> { langEnglish = !langEnglish; prefs.edit().putBoolean("lang_english", langEnglish).apply(); rebuildAll() }
                 KeyAction.SETTINGS -> { openSettings() }
-                null -> { panel = Panel.SUGGEST; rebuildAll() }
+                else -> { panel = Panel.SUGGEST; rebuildAll() }
             }
         }
         return tv
