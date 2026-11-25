@@ -15,7 +15,8 @@ class AstraKeyIME : InputMethodService() {
         val kv = KeyboardView(
             this,
             icProvider = { currentInputConnection },
-            editorInfoProvider = { currentInputEditorInfo }
+            editorInfoProvider = { currentInputEditorInfo },
+            hideRequester = { requestHideSelf(0) }
         )
         keyboardView = kv
         return kv

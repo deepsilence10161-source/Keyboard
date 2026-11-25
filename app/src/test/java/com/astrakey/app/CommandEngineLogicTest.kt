@@ -23,4 +23,19 @@ class CommandEngineLogicTest {
         assertEquals(11, engine.computeSelectAllLength("hello world"))
         assertEquals(0, engine.computeSelectAllLength(""))
     }
+
+    @Test fun `clip history records dedupes and caps at 12`() {
+        engine.clearClipHistory()
+        engine.recordClip("पहला")
+        engine.recordClip("दूसरा")
+        engine.recordClip("पहला") // डुप्लिकेट — नवीनतम स्थान पर जाए
+        val h = engine.clipHistory()
+        assertEquals(2, h.size)
+        assertEquals("पहला", h[0])
+        assertEquals("दूसरा", h[1])
+        for (i in 1..20) engine.recordClip("क्लिप$i")
+        assertEquals(12, engine.clipHistory().size)
+        engine.clearClipHistory()
+        assertEquals(0, engine.clipHistory().size)
+    }
 }

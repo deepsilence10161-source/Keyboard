@@ -128,4 +128,39 @@ class E2ETypingTest {
         val finalText = readFieldText()
         assertTrue("अपेक्षित खाली, मिला: '$finalText'", finalText == "" || finalText == hint)
     }
+
+    @Test
+    fun arrowKeysMoveCursor() {
+        tapEditText()
+        device.wait(Until.findObject(By.desc("spacebar")), 10000)
+
+        // "abc" टाइप (ऑटो-कैप: 'a' → 'A')
+        listOf("a", "b", "c").forEach { tapKey(it) }
+        device.waitForIdle(800)
+        assertEquals("Abc", readFieldText())
+
+        // बाएँ तीर → कर्सर 'c' से पहले
+        tapKey("arrow_left")
+        device.waitForIdle(800)
+
+        // 'x' टाइप → 'Ab' + 'x' + 'c'
+        tapKey("x")
+        device.waitForIdle(800)
+        assertEquals("Abxc", readFieldText())
+    }
+
+    @Test
+    fun toolbarIconsAndArrowRowPresent() {
+        tapEditText()
+        device.wait(Until.findObject(By.desc("spacebar")), 10000)
+
+        // टूलबार आइकन + तीर-पंक्ति + मुख्य कीज़ — सब दिखें
+        listOf(
+            "clipboard", "Ctrl", "123", "language", "settings", "emoji",
+            "shift", "backspace", "enter", "spacebar",
+            "arrow_up", "arrow_down", "arrow_left", "arrow_right"
+        ).forEach { desc ->
+            assertNotNull("गायब: $desc", device.wait(Until.findObject(By.desc(desc)), 4000))
+        }
+    }
 }

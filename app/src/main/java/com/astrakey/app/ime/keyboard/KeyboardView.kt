@@ -1,33 +1,37 @@
 package com.astrakey.app.ime.keyboard
 
 import android.content.Context
-import android.graphics.Color
 import android.graphics.Typeface
 import android.util.TypedValue
 import android.view.Gravity
-import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
-import android.widget.EditText
-import android.widget.FrameLayout
-import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
+import com.astrakey.app.R
 import com.astrakey.app.ime.commands.CommandEngine
 import com.astrakey.app.ime.suggestion.SuggestionEngine
-import com.astrakey.app.R
+import org.json.JSONArray
 
 /**
- * AstraKey का मुख्य कीबोर्ड दृश्य — SwiftKey-स्टाइल:
- * ऊपर टूलबार+सजेशन स्ट्रिप, नीचे 4 पंक्ति कीज़, Samsung-स्टाइल Ctrl-मोड
+ * AstraKey मुख्य कीबोर्ड दृश्य — SwiftKey-स्टाइल (उपयोगकर्ता-स्क्रीनशॉट मापन पर आधारित):
+ * टूलबार-आइकन पंक्ति → सजेशन-स्ट्रिप → (नंबर-रो) → 3 अक्षर-पंक्तियाँ → निचली पंक्ति → तीर-पंक्ति
+ * पंक्ति-ऊँचाई = स्क्रीन-ऊँचाई का अनुपात (SwiftKey जैसा अनुकूलन)। डार्क थीम डिफ़ॉल्ट।
  */
 class KeyboardView(
     context: Context,
     private val icProvider: () -> InputConnection?,
-    private val editorInfoProvider: () -> EditorInfo?
+    private val editorInfoProvider: () -> EditorInfo?,
+    private val hideRequester: () -> Unit
 ) : LinearLayout(context) {
 
     enum class Panel { SUGGEST, EMOJI, CLIP }
+
+    private data class Metrics(
+        val rowH: Int, val stripH: Int, val toolbarH: Int,
+        val numRowH: Int, val arrowRowH: Int, val radiusPx: Float
+    )
 
     private val engine = SuggestionEngine()
     private val commands = CommandEngine(context.applicationContext)
@@ -37,6 +41,9 @@ class KeyboardView(
     private var ctrlMode = false
     private var langEnglish = prefs.getBoolean("lang_english", true)
     private var numberRowOn = prefs.getBoolean("number_row", false)
+    private var arrowRowOn = prefs.getBoolean("arrow_row", true)
+    private var hapticOn = prefs.getBoolean("haptic", true)
+    private var themeMode = KeyboardTheme.currentMode(prefs)
     private var panel = Panel.SUGGEST
     private var lastWordLen = 0
     private var suggestionSlots: MutableList<TextView> = mutableListOf()
@@ -45,116 +52,228 @@ class KeyboardView(
     private val letterKeyViews: MutableList<KeyView> = mutableListOf()
     private var shiftKeyView: KeyView? = null
 
+    private val toolbar = LinearLayout(context)
     private val strip = LinearLayout(context)
     private val rowsBox = LinearLayout(context)
 
-    private val accent = 0xFF1A8FE3.toInt()
-    private val textDark = 0xFF202124.toInt()
+    private val pal get() = KeyboardTheme.palette(themeMode)
 
     init {
         orientation = VERTICAL
-        setBackgroundColor(0xFFF0F1F5.toInt())
-        strip.layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, dp(46))
+        setBackgroundColor(pal.bg)
+        toolbar.layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+        toolbar.orientation = HORIZONTAL
+        strip.layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
         strip.orientation = HORIZONTAL
         strip.setPadding(dp(4), dp(2), dp(4), dp(2))
         rowsBox.layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
         rowsBox.orientation = VERTICAL
+        addView(toolbar)
         addView(strip)
         addView(rowsBox)
         rebuildAll()
     }
 
+    // ---------- मापन (स्क्रीन-अनुपात — SwiftKey जैसा अनुकूलन) ----------
+
+    private fun metrics(): Metrics {
+        val h = resources.displayMetrics.heightPixels
+        fun band(frac: Float, minDp: Int, maxDp: Int): Int =
+            (h * frac).toInt().coerceIn(dp(minDp), dp(maxDp))
+        val rowH = band(0.062f, 44, 72)
+        return Metrics(
+            rowH = rowH,
+            stripH = band(0.052f, 40, 58),
+            toolbarH = band(0.040f, 34, 50),
+            numRowH = rowH * 82 / 100,
+            arrowRowH = band(0.034f, 28, 44),
+            radiusPx = dpf(pal.keyRadiusDp)
+        )
+    }
+
     // ---------- निर्माण ----------
 
     private fun rebuildAll() {
+        val m = metrics()
+        toolbar.layoutParams.height = m.toolbarH
+        strip.layoutParams.height = m.stripH
+        rebuildToolbar()
         rebuildStrip()
-        rebuildRows()
+        rebuildRows(m)
     }
 
-    private fun rebuildStrip() {
-        strip.removeAllViews()
+    private fun rebuildToolbar() {
+        toolbar.removeAllViews()
         when (panel) {
             Panel.SUGGEST -> {
-                strip.addView(toolbarBtn("📋", "clipboard", KeyAction.CLIPBOARD))
-                strip.addView(toolbarBtn("Ctrl", "Ctrl", KeyAction.CTRL, bold = true))
-                strip.addView(toolbarBtn("123", "123", KeyAction.NUMBER_TOGGLE))
-                strip.addView(toolbarBtn(if (langEnglish) "अ" else "EN", "language", KeyAction.LANGUAGE))
-                strip.addView(toolbarBtn("⚙", "settings", KeyAction.SETTINGS))
-                // स्थिर स्लॉट — टेक्स्ट in-place बदलता है, व्यू दोबारा नहीं बनते (StaleObject बचाव)
-                suggestionSlots = mutableListOf()
-                val hint = hintView("सुझाव…")
-                hintSlot = hint
-                strip.addView(hint)
-                repeat(3) {
-                    val tv = suggestView("")
-                    tv.visibility = GONE
-                    suggestionSlots.add(tv)
-                    strip.addView(tv)
-                }
-                updateSuggestions()
+                toolbar.addView(tbKey(KeyDef("", action = KeyAction.CLIPBOARD, iconRes = R.drawable.ic_clipboard)))
+                toolbar.addView(tbKey(KeyDef("Ctrl", action = KeyAction.CTRL)))
+                toolbar.addView(tbKey(KeyDef("123", action = KeyAction.NUMBER_TOGGLE)))
+                toolbar.addView(tbKey(KeyDef(if (langEnglish) "अ" else "EN", action = KeyAction.LANGUAGE)))
+                toolbar.addView(tbKey(KeyDef("", action = KeyAction.EMOJI, iconRes = R.drawable.ic_emoji)))
+                toolbar.addView(tbKey(KeyDef("", action = KeyAction.SETTINGS, iconRes = R.drawable.ic_gear)))
             }
-            Panel.EMOJI -> {
-                strip.addView(toolbarBtn("←", "back", null))
-                strip.addView(emojiScroll())
-            }
-            Panel.CLIP -> {
-                strip.addView(toolbarBtn("←", "back", null))
-                val clip = commands.currentClipText()?.toString()
-                val v = suggestView(if (clip.isNullOrEmpty()) "क्लिपबोर्ड खाली" else clip.take(60))
-                if (!clip.isNullOrEmpty()) v.setOnClickListener { doPaste() }
-                strip.addView(v)
+            Panel.EMOJI, Panel.CLIP -> {
+                val back = tbKey(KeyDef("", iconRes = R.drawable.ic_back))
+                back.contentDescription = "back"
+                back.onKeyTap = { panel = Panel.SUGGEST; rebuildAll() }
+                toolbar.addView(back)
+                val title = TextView(context)
+                val tlp = LayoutParams(0, LayoutParams.MATCH_PARENT, 1f)
+                tlp.setMargins(dp(4), 0, dp(4), 0)
+                title.layoutParams = tlp
+                title.gravity = Gravity.CENTER_VERTICAL
+                title.text = if (panel == Panel.EMOJI) "इमोजी" else "क्लिपबोर्ड"
+                title.textSize = 16f
+                title.setTextColor(pal.keyText)
+                title.typeface = Typeface.DEFAULT_BOLD
+                toolbar.addView(title)
+                val trash = tbKey(KeyDef("", iconRes = R.drawable.ic_trash))
+                trash.contentDescription = "clear"
+                trash.onKeyTap = { commands.clearClipHistory(); rebuildAll() }
+                if (panel == Panel.CLIP) toolbar.addView(trash)
             }
         }
     }
 
-    private fun rebuildRows() {
+    private fun tbKey(def: KeyDef): KeyView {
+        val kv = KeyView(context)
+        val lp = LayoutParams(0, LayoutParams.MATCH_PARENT, 1f)
+        lp.setMargins(dp(2), dp(2), dp(2), dp(2))
+        kv.layoutParams = lp
+        kv.applyGhost(pal.pressedFill, dpf(pal.keyRadiusDp), pal.toolbarIcon, pal.keyText)
+        kv.setKeyTextSizePx(dpf(15f))
+        kv.bind(def)
+        kv.hapticEnabled = hapticOn
+        if (def.action == KeyAction.CTRL && ctrlMode) kv.setCtrlHighlight(true, pal.accent)
+        kv.onKeyTap = { k -> handleKey(k) }
+        return kv
+    }
+
+    private fun rebuildStrip() {
+        strip.removeAllViews()
+        if (panel != Panel.SUGGEST) { strip.visibility = GONE; return }
+        strip.visibility = VISIBLE
+        // बाएँ ∨-घेरा (छिपाओ) — SwiftKey स्टाइल
+        val chev = KeyView(context)
+        val clp = LayoutParams(dp(38), LayoutParams.MATCH_PARENT)
+        clp.setMargins(dp(2), 0, dp(2), 0)
+        chev.layoutParams = clp
+        chev.applyGhost(pal.pressedFill, dpf(pal.keyRadiusDp), pal.secondaryText, pal.secondaryText)
+        chev.bind(KeyDef("", action = KeyAction.HIDE, iconRes = R.drawable.ic_chevron_down))
+        chev.hapticEnabled = hapticOn
+        chev.onKeyTap = { hideRequester() }
+        strip.addView(chev)
+        // स्थिर स्लॉट — टेक्स्ट in-place बदलता है, व्यू दोबारा नहीं बनते (StaleObject बचाव)
+        suggestionSlots = mutableListOf()
+        val hint = hintView()
+        hintSlot = hint
+        strip.addView(hint)
+        repeat(3) {
+            val tv = suggestView()
+            tv.visibility = GONE
+            suggestionSlots.add(tv)
+            strip.addView(tv)
+        }
+        updateSuggestions()
+    }
+
+    private fun rebuildRows(m: Metrics) {
         rowsBox.removeAllViews()
         letterKeyViews.clear()
         shiftKeyView = null
-        val rows = if (langEnglish) KeyboardLayouts.englishRows(numberRowOn)
-                   else KeyboardLayouts.hindiRows()
-        rows.forEach { rowDef -> rowsBox.addView(buildRow(rowDef)) }
-        rowsBox.addView(buildBottomRow())
+        when (panel) {
+            Panel.SUGGEST -> {
+                val rows = if (langEnglish) KeyboardLayouts.englishRows(numberRowOn)
+                           else KeyboardLayouts.hindiRows()
+                rows.forEachIndexed { i, def ->
+                    val h = if (langEnglish && numberRowOn && i == 0) m.numRowH else m.rowH
+                    rowsBox.addView(buildRow(def, h))
+                }
+                rowsBox.addView(buildBottomRow(m.rowH))
+                if (arrowRowOn) rowsBox.addView(buildArrowRow(m.arrowRowH))
+            }
+            Panel.EMOJI -> rowsBox.addView(buildEmojiPanel(m.rowH))
+            Panel.CLIP -> rowsBox.addView(buildClipPanel())
+        }
     }
 
-    private fun buildRow(defs: List<KeyDef>): LinearLayout {
+    private fun buildRow(defs: List<KeyDef>, rowH: Int): LinearLayout {
         val row = LinearLayout(context)
         row.orientation = HORIZONTAL
-        row.layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, dp(56))
-        row.setPadding(dp(3), dp(3), dp(3), dp(1))
-        defs.forEach { def -> row.addView(buildKey(def)) }
+        val lp = LayoutParams(LayoutParams.MATCH_PARENT, rowH)
+        lp.setMargins(0, dp(2), 0, dp(2))
+        row.layoutParams = lp
+        row.setPadding(dp(4), 0, dp(4), 0)
+        defs.forEach { def -> row.addView(buildKey(def, rowH)) }
         return row
     }
 
-    private fun buildBottomRow(): LinearLayout {
+    private fun buildBottomRow(rowH: Int): LinearLayout {
         val row = LinearLayout(context)
         row.orientation = HORIZONTAL
-        row.layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, dp(56))
-        row.setPadding(dp(3), dp(3), dp(3), dp(3))
-        row.addView(buildKey(KeyDef("😊", isSpecial = true, action = KeyAction.EMOJI, widthWeight = 1f)))
-        row.addView(buildKey(KeyDef(",", alt = ";"), specialStyle = false, weight = 1f))
-        row.addView(buildKey(KeyDef(spaceLabel(), output = " ", isSpecial = true, action = KeyAction.SPACE, widthWeight = 5f)))
-        row.addView(buildKey(KeyDef(".", alt = ":!"), specialStyle = false, weight = 1f))
-        row.addView(buildKey(KeyDef("↵", isSpecial = true, action = KeyAction.ENTER, widthWeight = 1.5f)))
+        val lp = LayoutParams(LayoutParams.MATCH_PARENT, rowH)
+        lp.setMargins(0, dp(2), 0, dp(2))
+        row.layoutParams = lp
+        row.setPadding(dp(4), 0, dp(4), 0)
+        row.addView(buildKey(KeyDef("", action = KeyAction.EMOJI, iconRes = R.drawable.ic_emoji), rowH))
+        row.addView(buildKey(KeyDef(",", alt = ";"), rowH))
+        row.addView(buildKey(KeyDef(spaceLabel(), output = " ", isSpecial = true, action = KeyAction.SPACE, widthWeight = 5f), rowH))
+        row.addView(buildKey(KeyDef(".", alt = ":!"), rowH))
+        row.addView(buildKey(KeyDef("", isSpecial = true, action = KeyAction.ENTER, iconRes = R.drawable.ic_enter, widthWeight = 1.5f), rowH))
         return row
     }
 
-    private fun spaceLabel(): String = if (langEnglish) "English" else "हिंदी"
+    /** तीर-पंक्ति — SwiftKey-स्टाइल ^ v < > (कर्सर-नियंत्रण) */
+    private fun buildArrowRow(rowH: Int): LinearLayout {
+        val row = LinearLayout(context)
+        row.orientation = HORIZONTAL
+        val lp = LayoutParams(LayoutParams.MATCH_PARENT, rowH)
+        lp.setMargins(0, dp(2), 0, dp(2))
+        row.layoutParams = lp
+        row.setPadding(dp(4), 0, dp(4), 0)
+        listOf(
+            KeyDef("", action = KeyAction.ARROW_LEFT, iconRes = R.drawable.ic_arrow_left),
+            KeyDef("", action = KeyAction.ARROW_UP, iconRes = R.drawable.ic_arrow_up),
+            KeyDef("", action = KeyAction.ARROW_DOWN, iconRes = R.drawable.ic_arrow_down),
+            KeyDef("", action = KeyAction.ARROW_RIGHT, iconRes = R.drawable.ic_arrow_right)
+        ).forEach { def -> row.addView(arrowKey(def, rowH)) }
+        return row
+    }
 
-    private fun buildKey(def: KeyDef, specialStyle: Boolean = def.isSpecial, weight: Float = def.widthWeight, emojiPanel: Boolean = false): KeyView {
+    private fun arrowKey(def: KeyDef, rowH: Int): KeyView {
         val kv = KeyView(context)
-        val lp = LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, weight)
+        val lp = LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, 1f)
         lp.setMargins(dp(2), 0, dp(2), 0)
         kv.layoutParams = lp
-        kv.gravity = Gravity.CENTER
-        kv.includeFontPadding = false
-        kv.setPadding(0, 0, 0, 0)
-        kv.textSize = if (def.action == KeyAction.CTRL) 13f else 19f
-        kv.setTextColor(textDark)
-        kv.typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.NORMAL)
-        kv.setBackgroundResource(if (specialStyle) R.drawable.key_special_bg else R.drawable.key_bg)
-        if (specialStyle) kv.elevation = dp(1).toFloat()
+        kv.applyGhost(pal.pressedFill, dpf(pal.keyRadiusDp), pal.secondaryText, pal.secondaryText)
         kv.bind(def)
+        kv.hapticEnabled = hapticOn
+        kv.onKeyTap = { k -> handleKey(k) }
+        return kv
+    }
+
+    private fun buildKey(def: KeyDef, rowH: Int): KeyView {
+        val kv = KeyView(context)
+        val lp = LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, def.widthWeight)
+        lp.setMargins(dp(2), 0, dp(2), 0)
+        kv.layoutParams = lp
+        val p = pal
+        val radius = dpf(p.keyRadiusDp)
+        val isSpace = def.action == KeyAction.SPACE
+        val special = def.isSpecial && !isSpace
+        when {
+            isSpace -> kv.applyStyle(p.spaceFill, p.pressedFill, radius, p.secondaryText, p.secondaryText, dp(1), p.spaceBorder)
+            special -> kv.applyStyle(p.specialFill, p.pressedFill, radius, p.keyText, p.keyText)
+            else -> kv.applyStyle(p.keyFill, p.pressedFill, radius, p.keyText, p.keyText)
+        }
+        when {
+            def.action == KeyAction.SPACE -> kv.setKeyTextSizePx(rowH * 0.26f)
+            def.iconRes == null && def.action == null -> kv.setKeyTextSizePx(rowH * 0.36f)
+            def.iconRes == null -> kv.setKeyTextSizePx(rowH * 0.30f)
+        }
+        kv.bind(def)
+        kv.hapticEnabled = hapticOn
         // शिफ्ट-डिस्प्ले in-place अपडेट के लिए पंजीकरण
         if (def.action == KeyAction.SHIFT) shiftKeyView = kv
         if (def.action == null && def.label.length == 1 && langEnglish) letterKeyViews.add(kv)
@@ -162,20 +281,12 @@ class KeyboardView(
         if (langEnglish && shift != ShiftState.OFF && def.action == null && def.label.length == 1) {
             kv.text = def.label.uppercase()
         }
-        // Samsung-स्टाइल Ctrl-मोड हाईलाइट
+        // Samsung-स्टाइल Ctrl-मोड हाइलाइट
         if (ctrlMode && langEnglish && def.action == null &&
             def.label.lowercase() in KeyboardLayouts.ctrlTargetKeys) {
-            kv.setCtrlHighlight(true, accent, textDark)
+            kv.setCtrlHighlight(true, p.accent)
         }
-
-        val isEmojiChar = emojiPanel || def.action == KeyAction.EMOJI_CHAR
-        kv.onKeyTap = { k ->
-            when {
-                k.action == KeyAction.EMOJI && !isEmojiChar -> { panel = Panel.EMOJI; rebuildStrip() }
-                isEmojiChar -> { commit(k.output); panel = Panel.SUGGEST; rebuildAll() }
-                else -> handleKey(k)
-            }
-        }
+        kv.onKeyTap = { k -> handleKey(k) }
         kv.onKeyAlt = { k -> k.alt?.let { commit(it) } }
         kv.onKeyRepeatStart = { _ -> deleteOne() }
         kv.onKeyRepeatTick = { _ -> deleteOne() }
@@ -183,94 +294,136 @@ class KeyboardView(
         return kv
     }
 
-    private fun toolbarBtn(label: String, desc: String, action: KeyAction?, bold: Boolean = false): TextView {
-        val tv = TextView(context)
-        val lp = LinearLayout.LayoutParams(dp(if (bold) 52 else 44), LayoutParams.MATCH_PARENT)
-        lp.setMargins(dp(2), 0, dp(2), 0)
-        tv.layoutParams = lp
-        tv.gravity = Gravity.CENTER
-        tv.text = label
-        tv.contentDescription = desc
-        tv.textSize = 15f
-        tv.setTextColor(if (desc == "Ctrl" && ctrlMode) 0xFFFFFFFF.toInt() else textDark)
-        tv.typeface = if (bold) Typeface.DEFAULT_BOLD else Typeface.SANS_SERIF
-        tv.setBackgroundResource(R.drawable.strip_btn_bg)
-        if (desc == "Ctrl" && ctrlMode) {
-            tv.backgroundTintList = android.content.res.ColorStateList.valueOf(accent)
-        }
-        tv.setOnClickListener {
-            when (action) {
-                KeyAction.CLIPBOARD -> { panel = Panel.CLIP; rebuildStrip() }
-                KeyAction.CTRL -> { toggleCtrl() }
-                KeyAction.NUMBER_TOGGLE -> { numberRowOn = !numberRowOn; prefs.edit().putBoolean("number_row", numberRowOn).apply(); rebuildRows() }
-                KeyAction.LANGUAGE -> { langEnglish = !langEnglish; prefs.edit().putBoolean("lang_english", langEnglish).apply(); rebuildAll() }
-                KeyAction.SETTINGS -> { openSettings() }
-                else -> { panel = Panel.SUGGEST; rebuildAll() }
-            }
-        }
-        return tv
-    }
+    private fun spaceLabel(): String = if (langEnglish) "English" else "हिंदी"
 
-    private fun hintView(text: String): TextView {
-        val tv = TextView(context)
-        val lp = LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, 3f)
-        lp.setMargins(dp(2), 0, dp(2), 0)
-        tv.layoutParams = lp
-        tv.gravity = Gravity.CENTER or Gravity.START
-        tv.text = text
-        tv.textSize = 14f
-        tv.setTextColor(0xFF9AA0A6.toInt())
-        tv.setPadding(dp(6), 0, dp(6), 0)
-        return tv
-    }
+    // ---------- पैनल (इमोजी / क्लिपबोर्ड) ----------
 
-    private fun suggestView(word: String): TextView {
-        val tv = TextView(context)
-        val lp = LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, 1f)
-        lp.setMargins(dp(2), 0, dp(2), 0)
-        tv.layoutParams = lp
-        tv.gravity = Gravity.CENTER
-        tv.text = word
-        tv.contentDescription = word
-        tv.textSize = 16f
-        tv.setTextColor(0xFF174EA6.toInt())
-        tv.setBackgroundResource(R.drawable.strip_btn_bg)
-        tv.setOnClickListener { commitSuggestion(word) }
-        return tv
-    }
-
-    private fun emojiScroll(): HorizontalScrollView {
-        val hs = HorizontalScrollView(context)
-        val lp = LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, 1f)
-        hs.layoutParams = lp
+    private fun buildEmojiPanel(rowH: Int): ScrollView {
+        val hs = ScrollView(context)
+        hs.layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
+        hs.setPadding(dp(6), dp(4), dp(6), dp(4))
         val box = LinearLayout(context)
-        box.orientation = HORIZONTAL
-        KeyboardLayouts.emojiSet.forEach { e ->
-            val tv = TextView(context)
-            val elp = LinearLayout.LayoutParams(dp(38), LayoutParams.MATCH_PARENT)
-            tv.layoutParams = elp
-            tv.gravity = Gravity.CENTER
-            tv.text = e
-            tv.textSize = 20f
-            tv.contentDescription = e
-            tv.setOnClickListener { commit(e); panel = Panel.SUGGEST; rebuildAll() }
-            box.addView(tv)
+        box.orientation = VERTICAL
+        val recents = recentEmojis()
+        if (recents.isNotEmpty()) {
+            box.addView(sectionLabel("हाल के"))
+            box.addView(emojiRow(recents.take(10), (rowH * 0.8f).toInt()))
+        }
+        box.addView(sectionLabel("सभी"))
+        KeyboardLayouts.emojiSet.chunked(5).forEach { chunk ->
+            box.addView(emojiRow(chunk, (rowH * 0.95f).toInt()))
         }
         hs.addView(box)
         return hs
     }
 
+    private fun sectionLabel(t: String): TextView {
+        val tv = TextView(context)
+        val lp = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+        lp.setMargins(dp(4), dp(4), dp(4), dp(2))
+        tv.layoutParams = lp
+        tv.text = t
+        tv.textSize = 13f
+        tv.setTextColor(pal.secondaryText)
+        return tv
+    }
+
+    private fun emojiRow(emojis: List<String>, cellH: Int): LinearLayout {
+        val row = LinearLayout(context)
+        row.orientation = HORIZONTAL
+        row.layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+        emojis.forEach { e ->
+            val tv = TextView(context)
+            val lp = LinearLayout.LayoutParams(0, cellH, 1f)
+            lp.setMargins(dp(2), 0, dp(2), 0)
+            tv.layoutParams = lp
+            tv.gravity = Gravity.CENTER
+            tv.text = e
+            tv.textSize = 22f
+            tv.contentDescription = e
+            tv.background = KeyboardTheme.ghostBackground(pal.pressedFill, dpf(pal.keyRadiusDp))
+            tv.setOnClickListener { commit(e); addRecentEmoji(e) }
+            row.addView(tv)
+        }
+        return row
+    }
+
+    private fun buildClipPanel(): ScrollView {
+        val hs = ScrollView(context)
+        hs.layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
+        hs.setPadding(dp(8), dp(6), dp(8), dp(6))
+        val box = LinearLayout(context)
+        box.orientation = VERTICAL
+        val history = commands.clipHistory()
+        if (history.isEmpty()) {
+            val tv = TextView(context)
+            tv.text = "क्लिपबोर्ड खाली — कुछ कॉपी करें या Ctrl दबाकर C चुनें"
+            tv.textSize = 14f
+            tv.setTextColor(pal.secondaryText)
+            tv.setPadding(dp(4), dp(12), dp(4), dp(12))
+            box.addView(tv)
+        } else {
+            history.forEach { entry ->
+                val row = LinearLayout(context)
+                row.orientation = HORIZONTAL
+                val lp = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+                lp.setMargins(0, dp(3), 0, dp(3))
+                row.layoutParams = lp
+                row.setPadding(dp(10), dp(10), dp(10), dp(10))
+                row.background = KeyboardTheme.keyBackground(pal.panelCard, pal.pressedFill, dpf(pal.keyRadiusDp))
+                row.contentDescription = "clip_entry"
+                row.isClickable = true
+                val tv = TextView(context)
+                tv.layoutParams = LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+                tv.text = entry
+                tv.textSize = 15f
+                tv.setTextColor(pal.keyText)
+                tv.maxLines = 2
+                tv.ellipsize = null
+                row.addView(tv)
+                row.setOnClickListener { icProvider()?.commitText(entry, 1) }
+                box.addView(row)
+            }
+        }
+        hs.addView(box)
+        return hs
+    }
+
+    private fun addRecentEmoji(e: String) {
+        val arr = try { JSONArray(prefs.getString("recent_emoji", "[]") ?: "[]") } catch (_: Exception) { JSONArray() }
+        val list = (0 until arr.length()).map { arr.optString(it) }.toMutableList()
+        list.removeAll { it == e }
+        list.add(0, e)
+        val out = JSONArray()
+        list.take(16).forEach { out.put(it) }
+        prefs.edit().putString("recent_emoji", out.toString()).apply()
+    }
+
+    private fun recentEmojis(): List<String> = try {
+        val a = JSONArray(prefs.getString("recent_emoji", "[]") ?: "[]")
+        (0 until a.length()).mapNotNull { i -> a.optString(i).takeIf { it.isNotEmpty() } }
+    } catch (_: Exception) { emptyList() }
+
     // ---------- क्रियाएँ ----------
 
     private fun handleKey(k: KeyDef) {
-        val ic = icProvider()
         when (k.action) {
             KeyAction.SHIFT -> { cycleShift(); refreshShiftDisplay() }
             KeyAction.BACKSPACE -> { deleteOne(); updateSuggestions() }
             KeyAction.SPACE -> { commit(" "); updateSuggestionsAfterSpace() }
             KeyAction.ENTER -> { enter() }
             KeyAction.EMOJI_CHAR -> { commit(k.output) }
-            KeyAction.CTRL, KeyAction.NUMBER_TOGGLE, KeyAction.LANGUAGE, KeyAction.SETTINGS, KeyAction.CLIPBOARD, KeyAction.EMOJI -> {}
+            KeyAction.CTRL -> toggleCtrl()
+            KeyAction.NUMBER_TOGGLE -> { numberRowOn = !numberRowOn; prefs.edit().putBoolean("number_row", numberRowOn).apply(); rebuildRows(metrics()) }
+            KeyAction.LANGUAGE -> { langEnglish = !langEnglish; prefs.edit().putBoolean("lang_english", langEnglish).apply(); rebuildAll() }
+            KeyAction.SETTINGS -> openSettings()
+            KeyAction.CLIPBOARD -> openClip()
+            KeyAction.EMOJI -> { panel = Panel.EMOJI; rebuildAll() }
+            KeyAction.HIDE -> hideRequester()
+            KeyAction.ARROW_UP -> commands.moveCursorVertical(icProvider(), true)
+            KeyAction.ARROW_DOWN -> commands.moveCursorVertical(icProvider(), false)
+            KeyAction.ARROW_LEFT -> commands.moveCursor(icProvider(), -1)
+            KeyAction.ARROW_RIGHT -> commands.moveCursor(icProvider(), 1)
             null -> {
                 if (ctrlMode && langEnglish && k.label.lowercase() in KeyboardLayouts.ctrlTargetKeys) {
                     runCtrlCommand(k.label.lowercase())
@@ -296,27 +449,26 @@ class KeyboardView(
         rebuildAll()
     }
 
+    private fun openClip() {
+        commands.captureSystemClipboard()
+        panel = Panel.CLIP
+        rebuildAll()
+    }
+
     /** Samsung-स्टाइल Ctrl+A/C/V/X/Z/Y */
     private fun runCtrlCommand(cmd: String) {
         val ic = icProvider()
-        val ok = when (cmd) {
+        when (cmd) {
             "a" -> commands.selectAll(ic)
-            "c" -> commands.copy(ic) != null
-            "x" -> commands.cut(ic) != null
+            "c" -> commands.copy(ic)
+            "x" -> commands.cut(ic)
             "v" -> commands.paste(ic)
-            "z" -> { toast(context, "Undo आ रहा है (M5)"); false }
-            "y" -> { toast(context, "Redo आ रहा है (M5)"); false }
-            else -> false
+            "z" -> toast(context, "Undo आ रहा है (M5)")
+            "y" -> toast(context, "Redo आ रहा है (M5)")
         }
         ctrlMode = false
         rebuildAll()
         updateSuggestions()
-    }
-
-    private fun doPaste() {
-        commands.paste(icProvider())
-        panel = Panel.SUGGEST
-        rebuildAll()
     }
 
     private fun commit(text: String) {
@@ -385,6 +537,10 @@ class KeyboardView(
                 tv.text = sug[i]
                 tv.contentDescription = sug[i]
                 tv.visibility = VISIBLE
+                // SwiftKey-स्टाइल: मध्य सुझाव बोल्ड-सफ़ेद, पार्श्व ग्रे
+                val center = i == 1 && sug.size == 3
+                tv.setTextColor(if (center) pal.suggMain else pal.suggSide)
+                tv.typeface = if (center) Typeface.DEFAULT_BOLD else Typeface.SANS_SERIF
             } else {
                 tv.visibility = GONE
             }
@@ -404,8 +560,12 @@ class KeyboardView(
         updateSuggestions()
     }
 
-    /** IME से: इनपुट शुरू — ऑटो-कैपिटलाइज़ + सजेशन ताज़ा */
+    /** IME से: इनपुट शुरू — थीम-ताज़ा + ऑटो-कैपिटलाइज़ + सजेशन ताज़ा */
     fun onInputStarted() {
+        val newMode = KeyboardTheme.currentMode(prefs)
+        if (newMode != themeMode) { themeMode = newMode; setBackgroundColor(pal.bg) }
+        arrowRowOn = prefs.getBoolean("arrow_row", true)
+        hapticOn = prefs.getBoolean("haptic", true)
         panel = Panel.SUGGEST
         lastWordLen = 0
         val info = editorInfoProvider()
@@ -425,14 +585,38 @@ class KeyboardView(
         letterKeyViews.forEach { kv ->
             kv.text = if (shift == ShiftState.OFF) kv.key.label else kv.key.label.uppercase()
         }
-        shiftKeyView?.setTextColor(if (shift == ShiftState.OFF) textDark else accent)
+        shiftKeyView?.setLabelTextColor(if (shift == ShiftState.OFF) pal.keyText else pal.accent)
+    }
+
+    private fun hintView(): TextView {
+        val tv = TextView(context)
+        val lp = LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, 3f)
+        lp.setMargins(dp(2), 0, dp(2), 0)
+        tv.layoutParams = lp
+        tv.gravity = Gravity.CENTER or Gravity.START
+        tv.text = "सुझाव…"
+        tv.textSize = 14f
+        tv.setTextColor(pal.secondaryText)
+        tv.setPadding(dp(6), 0, dp(6), 0)
+        return tv
+    }
+
+    private fun suggestView(): TextView {
+        val tv = TextView(context)
+        val lp = LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, 1f)
+        lp.setMargins(dp(2), 0, dp(2), 0)
+        tv.layoutParams = lp
+        tv.gravity = Gravity.CENTER
+        tv.text = ""
+        tv.textSize = 16f
+        tv.setTextColor(pal.suggSide)
+        tv.setOnClickListener { commitSuggestion(tv.text.toString()) }
+        return tv
     }
 
     private fun dp(v: Int): Int = TypedValue.applyDimension(
         TypedValue.COMPLEX_UNIT_DIP, v.toFloat(), resources.displayMetrics
     ).toInt()
-}
 
-private fun toast(context: Context, msg: String) {
-    android.widget.Toast.makeText(context.applicationContext, msg, android.widget.Toast.LENGTH_SHORT).show()
+    private fun dpf(v: Float): Float = v * resources.displayMetrics.density
 }

@@ -3,11 +3,13 @@ package com.astrakey.app.ime.commands
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.view.KeyEvent
 import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputConnection
+import org.json.JSONArray
 
 /**
- * Samsung-स्टाइल Ctrl-कमांड इंजन
+ * Samsung-स्टाइल Ctrl-कमांड इंजन + कर्सर-नियंत्रण + क्लिपबोर्ड-इतिहास
  * Ctrl+A = Select All, Ctrl+C = Copy, Ctrl+X = Cut, Ctrl+V = Paste
  * (Ctrl+Z/Y — अनडू/रीडू M5 में इतिहास-बफर के साथ)
  */
@@ -15,6 +17,9 @@ class CommandEngine(private val appContext: Context) {
 
     private val clipboard: ClipboardManager =
         appContext.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    private val prefs = appContext.getSharedPreferences("astrakey_prefs", Context.MODE_PRIVATE)
+
+    // ---------- Ctrl-कमांड ----------
 
     /** Ctrl+A — पूरा टेक्स्ट चुनें */
     fun selectAll(ic: InputConnection?): Boolean {
@@ -30,6 +35,7 @@ class CommandEngine(private val appContext: Context) {
         val selected = ic?.getSelectedText(0) ?: return null
         if (selected.isEmpty()) return null
         clipboard.setPrimaryClip(ClipData.newPlainText("astrakey", selected))
+        recordClip(selected)
         return selected
     }
 
@@ -50,7 +56,61 @@ class CommandEngine(private val appContext: Context) {
         return true
     }
 
-    /** वर्तमान क्लिपबोर्ड टेक्स्ट (क्लिपबोर्ड पैनल के लिए) */
+    // ---------- कर्सर-नियंत्रण (तीर-पंक्ति) ----------
+
+    /** तीर-की घटना भेजो — EditText में कर्सर खिसकता है */
+    fun moveCursor(ic: InputConnection?, dx: Int): Boolean {
+        if (ic == null) return false
+        val code = if (dx < 0) KeyEvent.KEYCODE_DPAD_LEFT else KeyEvent.KEYCODE_DPAD_RIGHT
+        ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, code))
+        ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, code))
+        return true
+    }
+
+    fun moveCursorVertical(ic: InputConnection?, up: Boolean): Boolean {
+        if (ic == null) return false
+        val code = if (up) KeyEvent.KEYCODE_DPAD_UP else KeyEvent.KEYCODE_DPAD_DOWN
+        ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, code))
+        ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, code))
+        return true
+    }
+
+    // ---------- क्लिपबोर्ड-इतिहास (क्लिपबोर्ड पैनल) ----------
+
+    /** इतिहास: नवीनतम पहले, डुप्लिकेट रहित, अधिकतम 12, prefs में सुरक्षित */
+    fun clipHistory(): List<String> {
+        val raw = prefs.getString("clip_history", null) ?: return emptyList()
+        return try {
+            val arr = JSONArray(raw)
+            (0 until arr.length()).mapNotNull { i -> arr.optString(i).takeIf { it.isNotEmpty() } }
+        } catch (_: Exception) { emptyList() }
+    }
+
+    fun recordClip(text: CharSequence?) {
+        val t = text?.toString() ?: return
+        if (t.isBlank()) return
+        val cur = clipHistory().toMutableList()
+        cur.removeAll { it == t }
+        cur.add(0, t)
+        saveHistory(cur.take(12))
+    }
+
+    fun captureSystemClipboard() {
+        val clip = clipboard.primaryClip ?: return
+        if (clip.itemCount == 0) return
+        val text = clip.getItemAt(0).coerceToText(appContext) ?: return
+        recordClip(text)
+    }
+
+    fun clearClipHistory() { saveHistory(emptyList()) }
+
+    private fun saveHistory(items: List<String>) {
+        val arr = JSONArray()
+        items.forEach { arr.put(it) }
+        prefs.edit().putString("clip_history", arr.toString()).apply()
+    }
+
+    /** वर्तमान क्लिपबोर्ड टेक्स्ट (पैनल-सहायक) */
     fun currentClipText(): CharSequence? {
         val clip = clipboard.primaryClip ?: return null
         if (clip.itemCount == 0) return null
