@@ -39,6 +39,8 @@ class KeyboardView(
     private var numberRowOn = prefs.getBoolean("number_row", false)
     private var panel = Panel.SUGGEST
     private var lastWordLen = 0
+    private var suggestionSlots: MutableList<TextView> = mutableListOf()
+    private var hintSlot: TextView? = null
 
     private val strip = LinearLayout(context)
     private val rowsBox = LinearLayout(context)
@@ -75,13 +77,18 @@ class KeyboardView(
                 strip.addView(toolbarBtn("123", "123", KeyAction.NUMBER_TOGGLE))
                 strip.addView(toolbarBtn(if (langEnglish) "अ" else "EN", "language", KeyAction.LANGUAGE))
                 strip.addView(toolbarBtn("⚙", "settings", KeyAction.SETTINGS))
-                if (lastWordLen == 0) {
-                    strip.addView(hintView(if (langEnglish) "सुझाव…" else "सुझाव…"))
-                } else {
-                    engine.suggest(currentWord()).take(3).forEach { s ->
-                        strip.addView(suggestView(s))
-                    }
+                // स्थिर स्लॉट — टेक्स्ट in-place बदलता है, व्यू दोबारा नहीं बनते (StaleObject बचाव)
+                suggestionSlots = mutableListOf()
+                val hint = hintView("सुझाव…")
+                hintSlot = hint
+                strip.addView(hint)
+                repeat(3) {
+                    val tv = suggestView("")
+                    tv.visibility = GONE
+                    suggestionSlots.add(tv)
+                    strip.addView(tv)
                 }
+                updateSuggestions()
             }
             Panel.EMOJI -> {
                 strip.addView(toolbarBtn("←", "back", null))
@@ -357,14 +364,25 @@ class KeyboardView(
     }
 
     fun updateSuggestions() {
+        if (panel != Panel.SUGGEST) return
         val w = currentWord()
         lastWordLen = w.length
-        if (panel == Panel.SUGGEST) rebuildStrip()
+        val sug = if (lastWordLen > 0) engine.suggest(w).take(3) else emptyList()
+        hintSlot?.visibility = if (sug.isEmpty()) VISIBLE else GONE
+        suggestionSlots.forEachIndexed { i, tv ->
+            if (i < sug.size) {
+                tv.text = sug[i]
+                tv.contentDescription = sug[i]
+                tv.visibility = VISIBLE
+            } else {
+                tv.visibility = GONE
+            }
+        }
     }
 
     fun updateSuggestionsAfterSpace() {
         lastWordLen = 0
-        if (panel == Panel.SUGGEST) rebuildStrip()
+        updateSuggestions()
     }
 
     private fun commitSuggestion(word: String) {
@@ -372,7 +390,7 @@ class KeyboardView(
         if (ic != null && lastWordLen > 0) ic.deleteSurroundingText(lastWordLen, 0)
         commit(word + " ")
         lastWordLen = 0
-        if (panel == Panel.SUGGEST) rebuildStrip()
+        updateSuggestions()
     }
 
     /** IME से: इनपुट शुरू — ऑटो-कैपिटलाइज़ + सजेशन ताज़ा */
