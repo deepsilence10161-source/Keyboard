@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AstraKey</string>
+    <string name="ime_name">AstraKey Keyboard</string>
+    <string name="step1">चरण 1: AstraKey को सक्षम (Enable) करें</string>
+    <string name="step2">चरण 2: AstraKey को चुनें (Choose)</string>
+    <string name="enable_ime">1. Enable करें</string>
+    <string name="choose_ime">2. चुनें (Switch)</string>
+    <string name="demo_hint">यहाँ टाइप करके देखें…</string>
+    <string name="status_enabled">स्थिति: सक्षम ✅</string>
+    <string name="status_not_enabled">स्थिति: अभी सक्षम नहीं ❌</string>
+    <string name="status_selected">स्थिति: चुना गया (डिफ़ॉल्ट) ✅</string>
+    <string name="status_not_selected">स्थिति: अभी डिफ़ॉल्ट नहीं</string>
+</resources>

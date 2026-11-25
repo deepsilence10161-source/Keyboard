@@ -1,0 +1,61 @@
+name: AstraKey CI — Build + Live Emulator E2E
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: JDK 17 सेटअप
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Gradle कैश सेटअप
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: यूनिट टेस्ट
+        run: ./gradlew testDebugUnitTest --stacktrace
+
+      - name: APK बिल्ड
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: KVM सक्षम करें (एमुलेटर त्वरण)
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: लाइव एमुलेटर E2E टेस्ट
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          script: |
+            adb install -r app/build/outputs/apk/debug/app-debug.apk
+            adb shell ime enable com.astrakey.app/.ime.AstraKeyIME
+            adb shell ime set com.astrakey.app/.ime.AstraKeyIME
+            ./gradlew connectedDebugAndroidTest --stacktrace
+
+      - name: APK artifact अपलोड
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: astrakey-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+
+      - name: टेस्ट रिपोर्ट अपलोड
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: app/build/reports/
