@@ -39,9 +39,11 @@ class KeyboardView(
     private var numberRowOn = prefs.getBoolean("number_row", false)
     private var panel = Panel.SUGGEST
     private var lastWordLen = 0
-    private var suggestionSlots: MutableList<TextView> = mutableListOf()
+    private var suggestionSlots: MutableList<TextextViewPlaceholder> = mutableListOf()
     private var hintSlot: TextView? = null
     private var lastSuggestionSignature: String? = null
+    private val letterKeyViews: MutableList<KeyView> = mutableListOf()
+    private var shiftKeyView: KeyView? = null
 
     private val strip = LinearLayout(context)
     private val rowsBox = LinearLayout(context)
@@ -107,6 +109,8 @@ class KeyboardView(
 
     private fun rebuildRows() {
         rowsBox.removeAllViews()
+        letterKeyViews.clear()
+        shiftKeyView = null
         val rows = if (langEnglish) KeyboardLayouts.englishRows(numberRowOn)
                    else KeyboardLayouts.hindiRows()
         rows.forEach { rowDef -> rowsBox.addView(buildRow(rowDef)) }
@@ -151,6 +155,9 @@ class KeyboardView(
         kv.setBackgroundResource(if (specialStyle) R.drawable.key_special_bg else R.drawable.key_bg)
         if (specialStyle) kv.elevation = dp(1).toFloat()
         kv.bind(def)
+        // शिफ्ट-डिस्प्ले in-place अपडेट के लिए पंजीकरण
+        if (def.action == KeyAction.SHIFT) shiftKeyView = kv
+        if (def.action == null && def.label.length == 1 && langEnglish) letterKeyViews.add(kv)
         // शिफ्ट सक्रिय हो तो अक्षर बड़े दिखें
         if (langEnglish && shift != ShiftState.OFF && def.action == null && def.label.length == 1) {
             kv.text = def.label.uppercase()
@@ -258,7 +265,7 @@ class KeyboardView(
     private fun handleKey(k: KeyDef) {
         val ic = icProvider()
         when (k.action) {
-            KeyAction.SHIFT -> { cycleShift(); rebuildRows() }
+            KeyAction.SHIFT -> { cycleShift(); refreshShiftDisplay() }
             KeyAction.BACKSPACE -> { deleteOne(); updateSuggestions() }
             KeyAction.SPACE -> { commit(" "); updateSuggestionsAfterSpace() }
             KeyAction.ENTER -> { enter() }
@@ -280,7 +287,7 @@ class KeyboardView(
             else -> k.output.uppercase()
         }
         commit(ch)
-        if (shift == ShiftState.ON_ONCE) { shift = ShiftState.OFF; rebuildRows() }
+        if (shift == ShiftState.ON_ONCE) { shift = ShiftState.OFF; refreshShiftDisplay() }
         updateSuggestions()
     }
 
@@ -411,6 +418,14 @@ class KeyboardView(
             if (emptyField || sentenceEnd) { shift = ShiftState.ON_ONCE }
         }
         rebuildAll()
+    }
+
+    /** पूरा रीबिल्ड किए बिना शिफ्ट-स्थिति के अनुसार अक्षर बदलो (tree-स्थिरता) */
+    private fun refreshShiftDisplay() {
+        letterKeyViews.forEach { kv ->
+            kv.text = if (shift == ShiftState.OFF) kv.key.label else kv.key.label.uppercase()
+        }
+        shiftKeyView?.setTextColor(if (shift == ShiftState.OFF) textDark else accent)
     }
 
     private fun dp(v: Int): Int = TypedValue.applyDimension(

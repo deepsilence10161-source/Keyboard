@@ -30,9 +30,18 @@ class E2ETypingTest {
     }
 
     private fun tapKey(desc: String) {
-        val key = device.wait(Until.findObject(By.desc(desc)), 4000)
-        assertNotNull("की नहीं मिली: $desc", key)
-        key.click()
+        var attempts = 0
+        while (attempts < 6) {
+            attempts++
+            try {
+                val key = device.wait(Until.findObject(By.desc(desc)), 4000) ?: continue
+                key.click()
+                return
+            } catch (e: androidx.test.uiautomator.StaleObjectException) {
+                Thread.sleep(300)
+            }
+        }
+        org.junit.Assert.fail("की नहीं मिली: $desc")
     }
 
     /** StaleObject सुरक्षा-जाल के साथ EditText पर टैप */
