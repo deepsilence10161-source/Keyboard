@@ -238,3 +238,6 @@ jobs:
 - समाधान: ViewCompat insets-गद्दी (navigationBars|displayCutout) + API≥30 संसाधन-गद्दी-जाल (800ms) + बजट-मेट्रिक्स (avail = स्क्रीन−नेव; कुल ≤48%; पंक्ति 44–72dp) + E2E keyboardSitsAboveNavBar।
 - **घटना-शिक्षा**: वर्कस्पेस-स्नैपशॉट 128MB-सीमा — बड़े APK (गबोर्ड 87MB) ने app/+.git दबा दिया; GitHub से पुनः-क्लोन सफल (81d2808)। **नियम: बड़े APK /tmp में — /home/user में कभी नहीं।**
 - शोध-दस्तावेज़: apk_analysis/nav_inset_research.md
+
+- **परिणाम (v0.4.0)**: CI रन 45721097073 (कमिट dc7780f) — **पूर्ण हरी झंडी**: यूनिट ✅ + APK ✅ + लाइव एमुलेटर E2E **7/7 पास** (नया keyboardSitsAboveNavBar सहित) — कीबोर्ड नेविगेशन-बार के ऊपर सत्यापित। APK 5.66MB → Drive `AstraKey-v0.4.0-debug-navfix-E2E-7tests.apk` (id 1FX9KB2WVdzbp9diZA4vMtfB2LHaqOhV-)।
+- नया बग (13): GIT_ASKPASS फ़ाइल का execute-bit स्नैपशॉट में नहीं बचा — push विफल; chmod 755 से सुधार। **हर सत्र-शुरुआत में chmod 755 askpass.sh जाँचें।**
