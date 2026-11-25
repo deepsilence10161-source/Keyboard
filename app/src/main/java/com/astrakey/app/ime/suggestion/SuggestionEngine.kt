@@ -80,7 +80,10 @@ class SuggestionEngine {
 
         val hiMatches = translit.entries
             .filter { it.key.startsWith(p) }
-            .sortedByDescending { (it.key == p) to -it.key.length } // सटीक पहले, फिर छोटा शब्द पहले
+            .sortedWith(
+                compareByDescending<Map.Entry<String, String>> { it.key == p }
+                    .thenBy { it.key.length }
+            )
             .take(max)
         val exactEnglish = english[p]?.let { listOf(p) } ?: emptyList()
         val enMatches = english.keys.filter { it.startsWith(p) && it != p }
