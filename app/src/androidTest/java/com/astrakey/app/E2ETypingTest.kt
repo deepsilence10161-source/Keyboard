@@ -300,6 +300,7 @@ class E2ETypingTest {
         device.waitForIdle(600)
         tapKey("Ctrl"); tapKey("a")
         tapKey("Ctrl"); tapKey("c")
+        tapKey("arrow_right") // चयन समाप्त — कर्सर अंत में (पेस्ट जोड़ेगा, बदलेगा नहीं)
         device.waitForIdle(600)
         tapKey("clipboard")
         val entry = device.wait(Until.findObject(By.desc("clip_entry")), 6000)
