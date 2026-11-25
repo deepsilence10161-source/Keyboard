@@ -78,6 +78,22 @@ class E2ETypingTest {
         org.junit.Assert.fail("कीबोर्ड नहीं खुला (spacebar नहीं दिखा)")
     }
 
+    /** लंबा-दबाव (alt-अक्षर/अंक हेतु) */
+    private fun longTapKey(desc: String) {
+        var attempts = 0
+        while (attempts < 6) {
+            attempts++
+            try {
+                val key = device.wait(Until.findObject(By.desc(desc)), 4000) ?: continue
+                key.longClick()
+                return
+            } catch (e: androidx.test.uiautomator.StaleObjectException) {
+                Thread.sleep(300)
+            }
+        }
+        org.junit.Assert.fail("लंबा-दबाव विफल: $desc")
+    }
+
     /** StaleObject सुरक्षा-जाल के साथ EditText टेक्स्ट पढ़ो (हर बार ताज़ा खोज) */
     private fun readFieldText(): String {
         var attempts = 0
@@ -253,6 +269,83 @@ class E2ETypingTest {
         assertTrue("तीर-की नहीं मिली", bottom >= 0)
         val limit = device.displayHeight - nav + 12
         assertTrue("कीबोर्ड नेविगेशन-बार में घुसा: bottom=$bottom सीमा=$limit", bottom <= limit)
+    }
+
+    @Test
+    fun longPressAltInsertsDigit() {
+        tapEditText()
+        ensureKeyboardOpen()
+        longTapKey("q")
+        device.waitForIdle(800)
+        assertEquals("1", readFieldText())
+    }
+
+    @Test
+    fun emojiPanelCommitsEmoji() {
+        tapEditText()
+        ensureKeyboardOpen()
+        tapKey("emoji")
+        val d = device.wait(Until.findObject(By.desc("😀")), 6000)
+        assertNotNull("इमोजी पैनल/😀 नहीं मिला", d)
+        d.click()
+        device.waitForIdle(800)
+        assertEquals("😀", readFieldText())
+    }
+
+    @Test
+    fun clipboardPanelPastesFromHistory() {
+        tapEditText()
+        ensureKeyboardOpen()
+        listOf("h", "e", "l", "l", "o").forEach { tapKey(it) }
+        device.waitForIdle(600)
+        tapKey("Ctrl"); tapKey("a")
+        tapKey("Ctrl"); tapKey("c")
+        device.waitForIdle(600)
+        tapKey("clipboard")
+        val entry = device.wait(Until.findObject(By.desc("clip_entry")), 6000)
+        assertNotNull("क्लिप-प्रविष्टि नहीं मिली", entry)
+        entry.click()
+        device.waitForIdle(800)
+        assertEquals("HelloHello", readFieldText())
+    }
+
+    @Test
+    fun hideButtonClosesAndReopensKeyboard() {
+        tapEditText()
+        ensureKeyboardOpen()
+        tapKey("hide")
+        val gone = device.wait(Until.gone(By.desc("spacebar")), 6000)
+        assertNotNull("कीबोर्ड नहीं छिपा", gone)
+        tapEditText()
+        ensureKeyboardOpen()
+        tapKey("h")
+        device.waitForIdle(600)
+        assertEquals("H", readFieldText())
+    }
+
+    @Test
+    fun themeToggleFromSettingsAppliesAndTypingSurvives() {
+        tapEditText()
+        ensureKeyboardOpen()
+        device.pressBack()
+        Thread.sleep(400)
+        val sw = device.wait(Until.findObject(By.res("com.astrakey.app", "switchTheme")), 5000)
+        assertNotNull("सेटिंग्स-स्विच नहीं मिला", sw)
+        sw.click()
+        Thread.sleep(300)
+        tapEditText()
+        ensureKeyboardOpen()
+        tapKey("a")
+        device.waitForIdle(600)
+        assertEquals("A", readFieldText())
+        // बहाली — डार्क (prefs से; अगली IME-खुलने पर लागू)
+        androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
+            .getSharedPreferences("astrakey_prefs", android.content.Context.MODE_PRIVATE)
+            .edit().putBoolean("theme_dark", true).commit()
+        device.pressBack()
+        Thread.sleep(300)
+        tapEditText()
+        ensureKeyboardOpen()
     }
 
     @Test

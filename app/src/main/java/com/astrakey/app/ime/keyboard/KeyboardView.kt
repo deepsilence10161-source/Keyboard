@@ -639,6 +639,8 @@ class KeyboardView(
     fun onInputStarted() {
         val newMode = KeyboardTheme.currentMode(prefs)
         if (newMode != themeMode) { themeMode = newMode; setBackgroundColor(pal.bg) }
+        numberRowOn = prefs.getBoolean("number_row", false)
+        langEnglish = prefs.getBoolean("lang_english", true)
         arrowRowOn = prefs.getBoolean("arrow_row", true)
         hapticOn = prefs.getBoolean("haptic", true)
         panel = Panel.SUGGEST
