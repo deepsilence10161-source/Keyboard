@@ -25,8 +25,11 @@ class KeyView @JvmOverloads constructor(
     private var downAt = 0L
     private var longFired = false
     private val longPressMs = 450L
-    private var repeatHandler: android.os.Handler? = null
     private var repeatRunnable: Runnable? = null
+    private var altRunnable: Runnable? = null
+
+    // साझा Handler — removeCallbacks() केवल उसी इंस्टेंस के पोस्ट किए रननेबल हटाता है
+    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
 
     fun bind(def: KeyDef) {
         key = def
@@ -84,40 +87,32 @@ class KeyView @JvmOverloads constructor(
     }
 
     private fun startRepeat() {
-        val h = android.os.Handler(android.os.Looper.getMainLooper())
-        repeatHandler = h
         val tick = object : Runnable {
             override fun run() {
                 if (!longFired) { longFired = true; onKeyRepeatStart?.invoke(key) }
                 onKeyRepeatTick?.invoke(key)
-                h.postDelayed(this, 55L)
+                handler.postDelayed(this, 55L)
             }
         }
         repeatRunnable = tick
-        h.postDelayed(tick, longPressMs)
+        handler.postDelayed(tick, longPressMs)
     }
 
-    private var altRunnable: Runnable? = null
-
     private fun scheduleAlt() {
-        val h = android.os.Handler(android.os.Looper.getMainLooper())
         val r = Runnable {
             if (!longFired && key.alt != null) fireLongPress()
         }
         altRunnable = r
-        h.postDelayed(r, longPressMs)
+        handler.postDelayed(r, longPressMs)
     }
 
     private fun cancelAlt() {
-        altRunnable?.let { android.os.Handler(android.os.Looper.getMainLooper()).removeCallbacks(it) }
+        altRunnable?.let { handler.removeCallbacks(it) }
         altRunnable = null
     }
 
     private fun stopRepeat() {
-        repeatHandler?.let { h ->
-            repeatRunnable?.let { h.removeCallbacks(it) }
-        }
-        repeatHandler = null
+        repeatRunnable?.let { handler.removeCallbacks(it) }
         repeatRunnable = null
         onKeyRepeatStop?.invoke(key)
     }

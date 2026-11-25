@@ -69,7 +69,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:inputType="text"
+            android:inputType="textCapSentences"
             android:hint="@string/demo_hint" />
 
         <TextView

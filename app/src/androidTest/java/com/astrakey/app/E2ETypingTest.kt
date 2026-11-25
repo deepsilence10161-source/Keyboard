@@ -8,6 +8,7 @@ import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.Until
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -86,11 +87,13 @@ class E2ETypingTest {
         val after = device.wait(Until.findObject(By.clazz("android.widget.EditText")), 3000)
         assertEquals("5 ", after.text)
 
-        // बैकस्पेस ×2 → खाली
+        // बैकस्पेस ×2 → खाली (खाली EditText hint टेक्स्ट लौटाता है)
         tapKey("backspace")
         tapKey("backspace")
         device.waitForIdle(500)
         val afterDel = device.wait(Until.findObject(By.clazz("android.widget.EditText")), 3000)
-        assertEquals("", afterDel.text)
+        val hint = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation()
+            .targetContext.getString(R.string.demo_hint)
+        assertTrue("अपेक्षित खाली, मिला: '${afterDel.text}'", afterDel.text == "" || afterDel.text == hint)
     }
 }
