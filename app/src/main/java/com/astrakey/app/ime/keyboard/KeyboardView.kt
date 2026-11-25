@@ -39,7 +39,7 @@ class KeyboardView(
     private var numberRowOn = prefs.getBoolean("number_row", false)
     private var panel = Panel.SUGGEST
     private var lastWordLen = 0
-    private var suggestionSlots: MutableList<TextextViewPlaceholder> = mutableListOf()
+    private var suggestionSlots: MutableList<TextView> = mutableListOf()
     private var hintSlot: TextView? = null
     private var lastSuggestionSignature: String? = null
     private val letterKeyViews: MutableList<KeyView> = mutableListOf()
