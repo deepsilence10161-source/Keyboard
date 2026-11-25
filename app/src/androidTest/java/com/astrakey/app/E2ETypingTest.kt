@@ -37,7 +37,9 @@ class E2ETypingTest {
 
     /** StaleObject सुरक्षा-जाल के साथ EditText पर टैप */
     private fun tapEditText() {
-        repeat(6) {
+        var attempts = 0
+        while (attempts < 6) {
+            attempts++
             try {
                 val f = device.wait(Until.findObject(By.clazz("android.widget.EditText")), 4000)
                 if (f != null) { f.click(); return }
@@ -50,7 +52,9 @@ class E2ETypingTest {
 
     /** StaleObject सुरक्षा-जाल के साथ EditText टेक्स्ट पढ़ो (हर बार ताज़ा खोज) */
     private fun readFieldText(): String {
-        repeat(6) {
+        var attempts = 0
+        while (attempts < 6) {
+            attempts++
             try {
                 val f = device.wait(Until.findObject(By.clazz("android.widget.EditText")), 3000)
                     ?: continue
