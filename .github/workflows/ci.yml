@@ -44,6 +44,10 @@ jobs:
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb shell ime enable com.astrakey.app/.ime.AstraKeyIME
             adb shell ime set com.astrakey.app/.ime.AstraKeyIME
+            # एमुलेटर का हार्डवेयर-कीबोर्ड मोड — सॉफ्ट IME ज़बरदस्ती दिखाओ (E2E के लिए ज़रूरी)
+            adb shell settings put secure show_ime_with_hard_keyboard 1
+            echo "DEFAULT_INPUT_METHOD = $(adb shell settings get secure default_input_method)"
+            echo "SHOW_IME_WITH_HARD_KB = $(adb shell settings get secure show_ime_with_hard_keyboard)"
             ./gradlew connectedDebugAndroidTest --stacktrace
 
       - name: APK artifact अपलोड
