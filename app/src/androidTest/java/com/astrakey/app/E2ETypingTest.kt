@@ -59,6 +59,25 @@ class E2ETypingTest {
         org.junit.Assert.fail("EditText पर टैप नहीं हो सका")
     }
 
+    /**
+     * कीबोर्ड-खुलने की पक्की पुष्टि — पहली IME-खुलने की रेस का बचाव:
+     * spacebar दिखे तक दोबारा EditText-क्लिक (रिट्राई लूप), फिर ही आगे।
+     */
+    private fun ensureKeyboardOpen() {
+        var attempts = 0
+        while (attempts < 5) {
+            attempts++
+            if (device.wait(Until.findObject(By.desc("spacebar")), 6000) != null) return
+            try {
+                val f = device.wait(Until.findObject(By.clazz("android.widget.EditText")), 3000)
+                f?.click()
+            } catch (e: androidx.test.uiautomator.StaleObjectException) {
+                Thread.sleep(300)
+            }
+        }
+        org.junit.Assert.fail("कीबोर्ड नहीं खुला (spacebar नहीं दिखा)")
+    }
+
     /** StaleObject सुरक्षा-जाल के साथ EditText टेक्स्ट पढ़ो (हर बार ताज़ा खोज) */
     private fun readFieldText(): String {
         var attempts = 0
@@ -81,9 +100,8 @@ class E2ETypingTest {
         // EditText पर टैप → AstraKey कीबोर्ड खुले
         tapEditText()
 
-        // कीबोर्ड दिखे (हमारी spacebar)
-        val space = device.wait(Until.findObject(By.desc("spacebar")), 10000)
-        assertNotNull("AstraKey कीबोर्ड नहीं खुला", space)
+        // कीबोर्ड दिखे (हमारी spacebar) — ensureKeyboardOpen खुद पुष्टि करता है
+        ensureKeyboardOpen()
 
         // "hello" टाइप (ऑटो-कैप: 'h' → 'H')
         listOf("h", "e", "l", "l", "o").forEach { tapKey(it) }
@@ -105,7 +123,7 @@ class E2ETypingTest {
     @Test
     fun numberRowToggleAndSpaceWorks() {
         tapEditText()
-        device.wait(Until.findObject(By.desc("spacebar")), 10000)
+        ensureKeyboardOpen()
 
         // 123 टॉगल → नंबर-रो दिखे
         tapKey("123")
@@ -132,7 +150,7 @@ class E2ETypingTest {
     @Test
     fun arrowKeysMoveCursor() {
         tapEditText()
-        device.wait(Until.findObject(By.desc("spacebar")), 10000)
+        ensureKeyboardOpen()
 
         // "abc" टाइप (ऑटो-कैप: 'a' → 'A')
         listOf("a", "b", "c").forEach { tapKey(it) }
@@ -152,7 +170,7 @@ class E2ETypingTest {
     @Test
     fun toolbarIconsAndArrowRowPresent() {
         tapEditText()
-        device.wait(Until.findObject(By.desc("spacebar")), 10000)
+        ensureKeyboardOpen()
 
         // टूलबार आइकन + तीर-पंक्ति + मुख्य कीज़ — सब दिखें
         listOf(

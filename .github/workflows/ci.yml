@@ -50,6 +50,9 @@ jobs:
             adb shell settings put secure show_ime_with_hard_keyboard 1
             echo "DEFAULT_INPUT_METHOD = $(adb shell settings get secure default_input_method)"
             echo "SHOW_IME_WITH_HARD_KB = $(adb shell settings get secure show_ime_with_hard_keyboard)"
+            # ऐप-प्रक्रिया वार्म-अप (पहली IME-खुलने की रेस घटाने हेतु)
+            adb shell am start -n com.astrakey.app/.MainActivity || true
+            sleep 2
             ./gradlew connectedDebugAndroidTest --stacktrace
 
       - name: APK artifact अपलोड
