@@ -20,8 +20,9 @@ jobs:
       - name: Gradle कैश सेटअप
         uses: gradle/actions/setup-gradle@v4
 
-      - name: यूनिट टेस्ट
-        run: ./gradlew testDebugUnitTest --stacktrace
+      - name: यूनिट टेस्ट (क्षणिक-डाउनलोड विफलता पर पुनः-प्रयास)
+        run: |
+          ./gradlew testDebugUnitTest --stacktrace || (sleep 15 && ./gradlew testDebugUnitTest --stacktrace)
 
       - name: APK बिल्ड
         run: ./gradlew assembleDebug --stacktrace
