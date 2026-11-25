@@ -41,6 +41,7 @@ class KeyboardView(
     private var lastWordLen = 0
     private var suggestionSlots: MutableList<TextView> = mutableListOf()
     private var hintSlot: TextView? = null
+    private var lastSuggestionSignature: String? = null
 
     private val strip = LinearLayout(context)
     private val rowsBox = LinearLayout(context)
@@ -368,6 +369,9 @@ class KeyboardView(
         val w = currentWord()
         lastWordLen = w.length
         val sug = if (lastWordLen > 0) engine.suggest(w).take(3) else emptyList()
+        val sig = sug.joinToString("|")
+        if (sig == lastSuggestionSignature) return
+        lastSuggestionSignature = sig
         hintSlot?.visibility = if (sug.isEmpty()) VISIBLE else GONE
         suggestionSlots.forEachIndexed { i, tv ->
             if (i < sug.size) {

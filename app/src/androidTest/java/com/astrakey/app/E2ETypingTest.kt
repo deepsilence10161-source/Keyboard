@@ -35,12 +35,38 @@ class E2ETypingTest {
         key.click()
     }
 
+    /** StaleObject सुरक्षा-जाल के साथ EditText पर टैप */
+    private fun tapEditText() {
+        repeat(6) {
+            try {
+                val f = device.wait(Until.findObject(By.clazz("android.widget.EditText")), 4000)
+                if (f != null) { f.click(); return }
+            } catch (e: androidx.test.uiautomator.StaleObjectException) {
+                Thread.sleep(300)
+            }
+        }
+        org.junit.Assert.fail("EditText पर टैप नहीं हो सका")
+    }
+
+    /** StaleObject सुरक्षा-जाल के साथ EditText टेक्स्ट पढ़ो (हर बार ताज़ा खोज) */
+    private fun readFieldText(): String {
+        repeat(6) {
+            try {
+                val f = device.wait(Until.findObject(By.clazz("android.widget.EditText")), 3000)
+                    ?: continue
+                return f.text
+            } catch (e: androidx.test.uiautomator.StaleObjectException) {
+                Thread.sleep(300)
+            }
+        }
+        org.junit.Assert.fail("EditText टेक्स्ट पढ़ा नहीं जा सका")
+        return ""
+    }
+
     @Test
     fun keyboardShowsAndTypesHello() {
         // EditText पर टैप → AstraKey कीबोर्ड खुले
-        val field = device.wait(Until.findObject(By.clazz("android.widget.EditText")), 6000)
-        assertNotNull("demo EditText नहीं मिला", field)
-        field.click()
+        tapEditText()
 
         // कीबोर्ड दिखे (हमारी spacebar)
         val space = device.wait(Until.findObject(By.desc("spacebar")), 10000)
@@ -49,29 +75,23 @@ class E2ETypingTest {
         // "hello" टाइप (ऑटो-कैप: 'h' → 'H')
         listOf("h", "e", "l", "l", "o").forEach { tapKey(it) }
         device.waitForIdle(800)
-        val after = device.wait(Until.findObject(By.clazz("android.widget.EditText")), 3000)
-        assertNotNull(after)
-        assertEquals("Hello", after.text)
+        assertEquals("Hello", readFieldText())
 
         // बैकस्पेस → "Hell"
         tapKey("backspace")
         device.waitForIdle(800)
-        val afterBk = device.wait(Until.findObject(By.clazz("android.widget.EditText")), 3000)
-        assertEquals("Hell", afterBk.text)
+        assertEquals("Hell", readFieldText())
 
         // शिफ्ट + h → "HellH"
         tapKey("shift")
         tapKey("h")
         device.waitForIdle(800)
-        val afterShift = device.wait(Until.findObject(By.clazz("android.widget.EditText")), 3000)
-        assertEquals("HellH", afterShift.text)
+        assertEquals("HellH", readFieldText())
     }
 
     @Test
     fun numberRowToggleAndSpaceWorks() {
-        val field = device.wait(Until.findObject(By.clazz("android.widget.EditText")), 6000)
-        assertNotNull(field)
-        field.click()
+        tapEditText()
         device.wait(Until.findObject(By.desc("spacebar")), 10000)
 
         // 123 टॉगल → नंबर-रो दिखे
@@ -84,16 +104,15 @@ class E2ETypingTest {
         // स्पेस
         tapKey("spacebar")
         device.waitForIdle(500)
-        val after = device.wait(Until.findObject(By.clazz("android.widget.EditText")), 3000)
-        assertEquals("5 ", after.text)
+        assertEquals("5 ", readFieldText())
 
         // बैकस्पेस ×2 → खाली (खाली EditText hint टेक्स्ट लौटाता है)
         tapKey("backspace")
         tapKey("backspace")
         device.waitForIdle(500)
-        val afterDel = device.wait(Until.findObject(By.clazz("android.widget.EditText")), 3000)
         val hint = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation()
             .targetContext.getString(R.string.demo_hint)
-        assertTrue("अपेक्षित खाली, मिला: '${afterDel.text}'", afterDel.text == "" || afterDel.text == hint)
+        val finalText = readFieldText()
+        assertTrue("अपेक्षित खाली, मिला: '$finalText'", finalText == "" || finalText == hint)
     }
 }
