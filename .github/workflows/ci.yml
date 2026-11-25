@@ -42,24 +42,10 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: |
             adb install -r app/build/outputs/apk/debug/app-debug.apk
-            echo "=== DIAG: package present? ==="
-            adb shell pm list packages | grep astrakey || echo "PACKAGE MISSING!"
-            echo "=== DIAG: ime list (all) ==="
-            adb shell ime list -a
-            echo "=== DIAG: input_method service ==="
-            adb shell dumpsys input_method | head -30
-            echo "=== enable/set with retry ==="
-            SET_OK=0
-            for i in 1 2 3 4 5 6 7 8; do
-              OUT=$(adb shell ime enable com.astrakey.app/.ime.AstraKeyIME 2>&1)
-              echo "attempt $i enable: $OUT"
-              if echo "$OUT" | grep -qi "unknown\|cannot"; then sleep 2; else
-                SETOUT=$(adb shell ime set com.astrakey.app/.ime.AstraKeyIME 2>&1)
-                echo "attempt $i set: $SETOUT"
-                if echo "$SETOUT" | grep -qi "unknown\|cannot"; then sleep 2; else SET_OK=1; break; fi
-              fi
-            done
-            echo "SET_OK=$SET_OK"
+            sleep 3
+            for i in 1 2 3 4 5 6 7 8 9 10; do OUT=$(adb shell ime enable com.astrakey.app/.ime.AstraKeyIME 2>&1); echo "enable attempt $i: $OUT"; if echo "$OUT" | grep -qi "unknown\|cannot"; then sleep 2; else break; fi; done
+            adb shell ime set com.astrakey.app/.ime.AstraKeyIME
+            adb shell ime list -s
             # एमुलेटर का हार्डवेयर-कीबोर्ड मोड — सॉफ्ट IME ज़बरदस्ती दिखाओ (E2E के लिए ज़रूरी)
             adb shell settings put secure show_ime_with_hard_keyboard 1
             echo "DEFAULT_INPUT_METHOD = $(adb shell settings get secure default_input_method)"
