@@ -26,6 +26,16 @@ class SuggestionEngineTest {
         assertTrue(out.contains("नमस्ते"))
     }
 
+    @Test fun `hindi first ordering in hinglish mode`() {
+        val out = engine.suggest("namas", hindiFirst = true)
+        assertEquals("नमस्ते", out.first())
+    }
+
+    @Test fun `english first ordering in english mode`() {
+        val out = engine.suggest("namas")
+        assertEquals("namaste", out.first())
+    }
+
     @Test fun `transliteration kaise`() {
         val out = engine.suggest("kais")
         assertTrue(out.contains("कैसे"))

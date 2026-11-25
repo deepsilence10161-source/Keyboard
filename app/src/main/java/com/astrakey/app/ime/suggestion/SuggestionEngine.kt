@@ -68,25 +68,34 @@ class SuggestionEngine {
         "padhai" to "पढ़ाई","school" to "स्कूल","paisa" to "पैसा","bazar" to "बाज़ार"
     )
 
-    /** वर्तमान उपसर्ग (prefix) के लिए सुझाव: EN शब्द + हिंग्लिश→हिंदी */
-    fun suggest(prefix: String, max: Int = 3): List<String> {
+    /**
+     * वर्तमान उपसर्ग (prefix) के लिए सुझाव।
+     * hindiFirst=true (हिंग्लिश मोड): देवनागरी-ट्रांसलिट पहले, अंग्रेज़ी बाद।
+     * hindiFirst=false (अंग्रेज़ी मोड): अंग्रेज़ी पहले, देवनागरी बाद।
+     */
+    fun suggest(prefix: String, max: Int = 3, hindiFirst: Boolean = false): List<String> {
         val p = prefix.trim().lowercase()
         if (p.isEmpty()) return emptyList()
         val out = LinkedHashSet<String>()
 
-        // 1) हिंग्लिश ट्रांसलिट (सटीक या उपसर्ग)
         val hiMatches = translit.entries
             .filter { it.key.startsWith(p) }
             .sortedByDescending { it.key.length }
             .take(max)
-        hiMatches.forEach { out.add(it.value) }
-
-        // 2) अंग्रेज़ी (सटीक पहले, फिर आवृत्ति-क्रम उपसर्ग)
-        english[p]?.let { out.add(p) }
+        val exactEnglish = english[p]?.let { listOf(p) } ?: emptyList()
         val enMatches = english.keys.filter { it.startsWith(p) && it != p }
             .sortedByDescending { english[it] ?: 0 }
             .take(max)
-        enMatches.forEach { out.add(it) }
+
+        if (hindiFirst) {
+            hiMatches.forEach { out.add(it.value) }
+            exactEnglish.forEach { out.add(it) }
+            enMatches.forEach { out.add(it) }
+        } else {
+            exactEnglish.forEach { out.add(it) }
+            enMatches.forEach { out.add(it) }
+            hiMatches.forEach { out.add(it.value) }
+        }
 
         return out.take(max)
     }

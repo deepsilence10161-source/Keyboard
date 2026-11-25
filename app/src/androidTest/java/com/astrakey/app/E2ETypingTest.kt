@@ -168,6 +168,27 @@ class E2ETypingTest {
     }
 
     @Test
+    fun hinglishTransliterationCommitsHindi() {
+        tapEditText()
+        ensureKeyboardOpen()
+
+        // aअ टॉगल → हिंग्लिश (हिंदी-प्राथमिक सुझाव) मोड
+        tapKey("language")
+        device.waitForIdle(600)
+
+        // "namaste" टाइप (क्वर्टी ही)
+        listOf("n", "a", "m", "a", "s", "t", "e").forEach { tapKey(it) }
+        device.waitForIdle(800)
+
+        // देवनागरी सुझाव दिखे और टैप पर क्षेत्र में बदले
+        val sugg = device.wait(Until.findObject(By.desc("नमस्ते")), 5000)
+        assertNotNull("नमस्ते सुझाव नहीं मिला", sugg)
+        sugg.click()
+        device.waitForIdle(800)
+        assertEquals("नमस्ते ", readFieldText())
+    }
+
+    @Test
     fun toolbarIconsAndArrowRowPresent() {
         tapEditText()
         ensureKeyboardOpen()

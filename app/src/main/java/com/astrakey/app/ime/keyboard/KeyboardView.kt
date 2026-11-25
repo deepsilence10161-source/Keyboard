@@ -184,10 +184,10 @@ class KeyboardView(
         shiftKeyView = null
         when (panel) {
             Panel.SUGGEST -> {
-                val rows = if (langEnglish) KeyboardLayouts.englishRows(numberRowOn)
-                           else KeyboardLayouts.hindiRows()
+                // हिंग्लिश मोड: लेआउट क्वर्टी ही रहता है — सुझाव देवनागरी मिलते हैं
+                val rows = KeyboardLayouts.englishRows(numberRowOn)
                 rows.forEachIndexed { i, def ->
-                    val h = if (langEnglish && numberRowOn && i == 0) m.numRowH else m.rowH
+                    val h = if (numberRowOn && i == 0) m.numRowH else m.rowH
                     rowsBox.addView(buildRow(def, h))
                 }
                 rowsBox.addView(buildBottomRow(m.rowH))
@@ -276,13 +276,13 @@ class KeyboardView(
         kv.hapticEnabled = hapticOn
         // शिफ्ट-डिस्प्ले in-place अपडेट के लिए पंजीकरण
         if (def.action == KeyAction.SHIFT) shiftKeyView = kv
-        if (def.action == null && def.label.length == 1 && langEnglish) letterKeyViews.add(kv)
+        if (def.action == null && def.label.length == 1) letterKeyViews.add(kv)
         // शिफ्ट सक्रिय हो तो अक्षर बड़े दिखें
-        if (langEnglish && shift != ShiftState.OFF && def.action == null && def.label.length == 1) {
+        if (shift != ShiftState.OFF && def.action == null && def.label.length == 1) {
             kv.text = def.label.uppercase()
         }
         // Samsung-स्टाइल Ctrl-मोड हाइलाइट
-        if (ctrlMode && langEnglish && def.action == null &&
+        if (ctrlMode && def.action == null &&
             def.label.lowercase() in KeyboardLayouts.ctrlTargetKeys) {
             kv.setCtrlHighlight(true, p.accent)
         }
@@ -425,7 +425,7 @@ class KeyboardView(
             KeyAction.ARROW_LEFT -> commands.moveCursor(icProvider(), -1)
             KeyAction.ARROW_RIGHT -> commands.moveCursor(icProvider(), 1)
             null -> {
-                if (ctrlMode && langEnglish && k.label.lowercase() in KeyboardLayouts.ctrlTargetKeys) {
+                if (ctrlMode && k.label.lowercase() in KeyboardLayouts.ctrlTargetKeys) {
                     runCtrlCommand(k.label.lowercase())
                 } else {
                     commitLetter(k)
@@ -527,7 +527,7 @@ class KeyboardView(
         if (panel != Panel.SUGGEST) return
         val w = currentWord()
         lastWordLen = w.length
-        val sug = if (lastWordLen > 0) engine.suggest(w).take(3) else emptyList()
+        val sug = if (lastWordLen > 0) engine.suggest(w, hindiFirst = !langEnglish).take(3) else emptyList()
         val sig = sug.joinToString("|")
         if (sig == lastSuggestionSignature) return
         lastSuggestionSignature = sig
