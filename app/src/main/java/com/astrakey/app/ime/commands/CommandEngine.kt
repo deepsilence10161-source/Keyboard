@@ -18,6 +18,7 @@ class CommandEngine(private val appContext: Context) {
     private val clipboard: ClipboardManager =
         appContext.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     private val prefs = appContext.getSharedPreferences("astrakey_prefs", Context.MODE_PRIVATE)
+    private val undoManager = UndoManager()
 
     // ---------- Ctrl-कमांड ----------
 
@@ -53,6 +54,46 @@ class CommandEngine(private val appContext: Context) {
         val text = clip.getItemAt(0).coerceToText(appContext) ?: return false
         if (text.isEmpty()) return false
         ic?.commitText(text.toString(), 1)
+        return true
+    }
+
+    // ---------- अनडू/रीडू (Ctrl+Z / Ctrl+Y) ----------
+
+    /** KeyboardView से स्नैपशॉट-जोड़ी दर्ज करो */
+    fun pushUndo(before: UndoManager.Snap, after: UndoManager.Snap, isTyping: Boolean) {
+        undoManager.push(before, after, isTyping)
+    }
+
+    /** Ctrl+Z — पिछला स्नैपशॉट लागू */
+    fun undo(ic: InputConnection?): Boolean {
+        val target = undoManager.undoTarget() ?: return false
+        if (applySnap(ic, target)) { undoManager.advanceUndo(); return true }
+        return false
+    }
+
+    /** Ctrl+Y — अगला स्नैपशॉट लागू */
+    fun redo(ic: InputConnection?): Boolean {
+        val target = undoManager.redoTarget() ?: return false
+        if (applySnap(ic, target)) { undoManager.advanceRedo(); return true }
+        return false
+    }
+
+    /** स्नैपशॉट बहाल: पूरा टेक्स्ट + चयन (EditText पर विश्वसनीय) */
+    private fun applySnap(ic: InputConnection?, snap: UndoManager.Snap): Boolean {
+        if (ic == null) return false
+        val et = ic.getExtractedText(ExtractedTextRequest(), 0) ?: return false
+        val cur = et.text?.toString() ?: return false
+        if (cur == snap.text) {
+            ic.setSelection(snap.selStart, snap.selEnd)
+            return true
+        }
+        val beforeCount = et.selectionStart
+        val afterCount = cur.length - et.selectionEnd
+        ic.beginBatchEdit()
+        ic.deleteSurroundingText(beforeCount, afterCount)
+        ic.commitText(snap.text, 1)
+        ic.setSelection(snap.selStart, snap.selEnd)
+        ic.endBatchEdit()
         return true
     }
 

@@ -455,16 +455,26 @@ class KeyboardView(
         rebuildAll()
     }
 
-    /** Samsung-स्टाइल Ctrl+A/C/V/X/Z/Y */
+    /** Samsung-स्टाइल Ctrl+A/Z/X/C/V/Y — सब वास्तविक */
     private fun runCtrlCommand(cmd: String) {
         val ic = icProvider()
         when (cmd) {
             "a" -> commands.selectAll(ic)
             "c" -> commands.copy(ic)
-            "x" -> commands.cut(ic)
-            "v" -> commands.paste(ic)
-            "z" -> toast(context, "Undo आ रहा है (M5)")
-            "y" -> toast(context, "Redo आ रहा है (M5)")
+            "x" -> {
+                val before = snap(ic)
+                commands.cut(ic)
+                val after = snap(ic)
+                if (before != null && after != null) commands.pushUndo(before, after, false)
+            }
+            "v" -> {
+                val before = snap(ic)
+                commands.paste(ic)
+                val after = snap(ic)
+                if (before != null && after != null) commands.pushUndo(before, after, false)
+            }
+            "z" -> commands.undo(ic)
+            "y" -> commands.redo(ic)
         }
         ctrlMode = false
         rebuildAll()
@@ -472,11 +482,30 @@ class KeyboardView(
     }
 
     private fun commit(text: String) {
-        icProvider()?.commitText(text, 1)
+        val ic = icProvider() ?: return
+        val before = snap(ic)
+        ic.commitText(text, 1)
+        val after = snap(ic)
+        if (before != null && after != null) {
+            commands.pushUndo(before, after, text.length == 1 && text[0].isLetterOrDigit())
+        }
+    }
+
+    /** वर्तमान फील्ड-स्नैपशॉट (अनडू-स्टैक हेतु) */
+    private fun snap(ic: InputConnection?): com.astrakey.app.ime.commands.UndoManager.Snap? {
+        ic ?: return null
+        val et = ic.getExtractedText(android.view.inputmethod.ExtractedTextRequest(), 0) ?: return null
+        return com.astrakey.app.ime.commands.UndoManager.Snap(
+            et.text?.toString() ?: "", et.selectionStart, et.selectionEnd
+        )
     }
 
     private fun deleteOne() {
-        icProvider()?.deleteSurroundingText(1, 0)
+        val ic = icProvider() ?: return
+        val before = snap(ic)
+        ic.deleteSurroundingText(1, 0)
+        val after = snap(ic)
+        if (before != null && after != null) commands.pushUndo(before, after, false)
     }
 
     private fun enter() {
@@ -485,7 +514,7 @@ class KeyboardView(
         if (info != null && (info.imeOptions and (EditorInfo.IME_ACTION_DONE or EditorInfo.IME_ACTION_SEND or EditorInfo.IME_ACTION_SEARCH or EditorInfo.IME_ACTION_GO or EditorInfo.IME_ACTION_NEXT)) != 0) {
             ic?.performEditorAction(info.actionId)
         } else {
-            ic?.commitText("\n", 1)
+            commit("\n")
         }
         updateSuggestions()
     }

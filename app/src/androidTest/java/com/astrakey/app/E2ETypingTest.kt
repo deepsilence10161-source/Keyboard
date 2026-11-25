@@ -189,6 +189,49 @@ class E2ETypingTest {
     }
 
     @Test
+    fun ctrlUndoRedoCopyPasteAllReal() {
+        tapEditText()
+        ensureKeyboardOpen()
+
+        // "hello" टाइप → "Hello" (ऑटो-कैप)
+        listOf("h", "e", "l", "l", "o").forEach { tapKey(it) }
+        device.waitForIdle(800)
+        assertEquals("Hello", readFieldText())
+
+        // Ctrl+A (सब चुनो) → Ctrl+C (कॉपी) → तीर-दाएँ (कर्सर अंत) → Ctrl+V (जोड़ो)
+        tapKey("Ctrl"); tapKey("a")
+        tapKey("Ctrl"); tapKey("c")
+        tapKey("arrow_right")
+        tapKey("Ctrl"); tapKey("v")
+        device.waitForIdle(1000)
+        assertEquals("HelloHello", readFieldText())
+
+        // Ctrl+Z → "Hello" (पेस्ट अनडू)
+        tapKey("Ctrl"); tapKey("z")
+        device.waitForIdle(1000)
+        assertEquals("Hello", readFieldText())
+
+        // Ctrl+Y → "HelloHello" (रीडू)
+        tapKey("Ctrl"); tapKey("y")
+        device.waitForIdle(1000)
+        assertEquals("HelloHello", readFieldText())
+
+        // Ctrl+A → Ctrl+X (कट) → खाली
+        tapKey("Ctrl"); tapKey("a")
+        tapKey("Ctrl"); tapKey("x")
+        device.waitForIdle(1000)
+        val hint = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation()
+            .targetContext.getString(R.string.demo_hint)
+        val afterCut = readFieldText()
+        assertTrue("कट के बाद खाली होना चाहिए, मिला: '$afterCut'", afterCut == "" || afterCut == hint)
+
+        // Ctrl+V → कटा हुआ वापस
+        tapKey("Ctrl"); tapKey("v")
+        device.waitForIdle(1000)
+        assertEquals("HelloHello", readFieldText())
+    }
+
+    @Test
     fun toolbarIconsAndArrowRowPresent() {
         tapEditText()
         ensureKeyboardOpen()

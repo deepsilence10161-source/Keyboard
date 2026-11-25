@@ -7,9 +7,10 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.switchmaterial.SwitchMaterial
 
 /**
- * सेटअप गाइड — Enable → Choose → टाइप करके देखें
+ * सेटअप गाइड — Enable → Choose → टाइप करके देखें + कीबोर्ड-सेटिंग्स
  */
 class MainActivity : AppCompatActivity() {
 
@@ -32,6 +33,20 @@ class MainActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
             }
+        }
+
+        bindSwitch(R.id.switchTheme, "theme_dark", true)
+        bindSwitch(R.id.switchArrows, "arrow_row", true)
+        bindSwitch(R.id.switchHaptic, "haptic", true)
+    }
+
+    /** कीबोर्ड-सेटिंग स्विच — prefs में सुरक्षित, IME अगली खुलने पर लागू करता है */
+    private fun bindSwitch(id: Int, key: String, def: Boolean) {
+        val sw = findViewById<SwitchMaterial>(id)
+        val prefs = getSharedPreferences("astrakey_prefs", MODE_PRIVATE)
+        sw.isChecked = prefs.getBoolean(key, def)
+        sw.setOnCheckedChangeListener { _, checked ->
+            prefs.edit().putBoolean(key, checked).apply()
         }
     }
 
