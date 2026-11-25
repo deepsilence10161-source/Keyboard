@@ -229,3 +229,12 @@ jobs:
 - **नए बग (4)**: (9) 13 वेक्टर-XML heredoc-क्षत — write_file से मरम्मत; (10) पहली IME-खुलने की रेस — ensureKeyboardOpen रीट्राई+CI वार्म-अप; (11) ट्रांसलिट-रैंकिंग (namaskar>namaste) — सटीक>छोटा क्रम; (12) Kotlin `to`-जोड़ी निष्कर्षण — स्पष्ट compareByDescending।
 - रन: 45702873525 F, 45703512142 F, 45704639505 **S (A, 4/4)**, 45705438299 F, 45705950941 F, 45706164676 **S (B)**, 45706796391 **S (C, 6/6 E2E)** — v0.3.0 (code 4), APK 5.66MB Drive में।
 
+
+### 2026-11-26 — नेविगेशन-बार इनसेट शोध + समाधान (v0.4.0)
+- उपयोगकर्ता-प्रतिक्रिया: UI मोबाइल के तीनों नेव-बटनों में घुस रही; Microsoft की परफेक्ट → दोनों APK फिर अधिकतम-गहराई शोध।
+- आधिकारिक दस्तावेज़: Android 11+ से IME-विंडो एज-टू-एज; Android 15+ अनिवार्य; IME को navigationBars.bottom गद्दी स्वयं लगानी है।
+- SwiftKey dex-प्रमाण: View$OnApplyWindowInsetsListener, WindowInsets$Type.navigationBars, onComputeInsets, keyboardHeight, WindowInsetsAnimation।
+- Gboard arsc-प्रमाण: keyboard_height_33–52_mm (भौतिक-मिमी मॉडल) + keyboard_height_ratio।
+- समाधान: ViewCompat insets-गद्दी (navigationBars|displayCutout) + API≥30 संसाधन-गद्दी-जाल (800ms) + बजट-मेट्रिक्स (avail = स्क्रीन−नेव; कुल ≤48%; पंक्ति 44–72dp) + E2E keyboardSitsAboveNavBar।
+- **घटना-शिक्षा**: वर्कस्पेस-स्नैपशॉट 128MB-सीमा — बड़े APK (गबोर्ड 87MB) ने app/+.git दबा दिया; GitHub से पुनः-क्लोन सफल (81d2808)। **नियम: बड़े APK /tmp में — /home/user में कभी नहीं।**
+- शोध-दस्तावेज़: apk_analysis/nav_inset_research.md

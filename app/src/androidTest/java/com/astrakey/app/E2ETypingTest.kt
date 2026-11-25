@@ -232,6 +232,30 @@ class E2ETypingTest {
     }
 
     @Test
+    fun keyboardSitsAboveNavBar() {
+        tapEditText()
+        ensureKeyboardOpen()
+        val ctx = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
+        val rid = ctx.resources.getIdentifier("navigation_bar_height", "dimen", "android")
+        val nav = if (rid > 0) ctx.resources.getDimensionPixelSize(rid) else 0
+        var bottom = -1
+        var attempts = 0
+        while (attempts < 6) {
+            attempts++
+            try {
+                val a = device.wait(Until.findObject(By.desc("arrow_right")), 5000) ?: continue
+                bottom = a.visibleBounds.bottom
+                break
+            } catch (e: androidx.test.uiautomator.StaleObjectException) {
+                Thread.sleep(300)
+            }
+        }
+        assertTrue("तीर-की नहीं मिली", bottom >= 0)
+        val limit = device.displayHeight - nav + 12
+        assertTrue("कीबोर्ड नेविगेशन-बार में घुसा: bottom=$bottom सीमा=$limit", bottom <= limit)
+    }
+
+    @Test
     fun toolbarIconsAndArrowRowPresent() {
         tapEditText()
         ensureKeyboardOpen()

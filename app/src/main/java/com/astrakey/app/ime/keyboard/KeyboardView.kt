@@ -2,6 +2,7 @@ package com.astrakey.app.ime.keyboard
 
 import android.content.Context
 import android.graphics.Typeface
+import android.os.Build
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.inputmethod.EditorInfo
@@ -9,6 +10,8 @@ import android.view.inputmethod.InputConnection
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import com.astrakey.app.R
 import com.astrakey.app.ime.commands.CommandEngine
 import com.astrakey.app.ime.suggestion.SuggestionEngine
@@ -61,6 +64,7 @@ class KeyboardView(
     init {
         orientation = VERTICAL
         setBackgroundColor(pal.bg)
+        setupNavBarInsets()
         toolbar.layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
         toolbar.orientation = HORIZONTAL
         strip.layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
@@ -78,17 +82,59 @@ class KeyboardView(
 
     private fun metrics(): Metrics {
         val h = resources.displayMetrics.heightPixels
+        // Gboard-सिद्धांत: बजट = (स्क्रीन − नेविगेशन-बार); SwiftKey-मापन: कुल ≈ 45–48%
+        val navEst = navBarHeightPx()
+        val avail = (h - navEst).coerceAtLeast(dp(320))
         fun band(frac: Float, minDp: Int, maxDp: Int): Int =
-            (h * frac).toInt().coerceIn(dp(minDp), dp(maxDp))
-        val rowH = band(0.062f, 44, 72)
+            (avail * frac).toInt().coerceIn(dp(minDp), dp(maxDp))
+        val toolbarH = band(0.040f, 34, 50)
+        val stripH = band(0.052f, 40, 58)
+        val arrowRowH = band(0.034f, 28, 44)
+        val budget = (avail * 0.48f).toInt()
+        val arrowPart = if (arrowRowOn) arrowRowH + dp(4) else 0
+        val rowsN = (if (numberRowOn) 4 else 3) + 1
+        val fixed = toolbarH + stripH + arrowPart + dp(16)
+        val rowH = ((budget - fixed) / rowsN).coerceIn(dp(44), dp(72))
         return Metrics(
             rowH = rowH,
-            stripH = band(0.052f, 40, 58),
-            toolbarH = band(0.040f, 34, 50),
+            stripH = stripH,
+            toolbarH = toolbarH,
             numRowH = rowH * 82 / 100,
-            arrowRowH = band(0.034f, 28, 44),
+            arrowRowH = arrowRowH,
             radiusPx = dpf(pal.keyRadiusDp)
         )
+    }
+
+    /** नेविगेशन-बार ऊँचाई (संसाधन-आधारित अनुमान) */
+    private fun navBarHeightPx(): Int {
+        val rid = resources.getIdentifier("navigation_bar_height", "dimen", "android")
+        return if (rid > 0) resources.getDimensionPixelSize(rid) else dp(48)
+    }
+
+    /**
+     * Android 11+ पर IME-विंडो एज-टू-एज — कीबोर्ड स्वयं navigationBars-गद्दी लगाता है
+     * (SwiftKey dex-प्रमाण: OnApplyWindowInsetsListener + WindowInsets$Type.navigationBars)
+     */
+    private fun setupNavBarInsets() {
+        ViewCompat.setOnApplyWindowInsetsListener(this) { v, insets ->
+            val bars = insets.getInsets(
+                WindowInsetsCompat.Type.navigationBars() or WindowInsetsCompat.Type.displayCutout()
+            )
+            v.setPadding(0, 0, 0, bars.bottom)
+            WindowInsetsCompat.CONSUMED
+        }
+        ViewCompat.requestApplyInsets(this)
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        // विफलता-जाल: कुछ ROM insets नहीं भेजते — API 30+ (एज-टू-एज युग) में संसाधन-गद्दी
+        postDelayed({
+            if (paddingBottom == 0 && Build.VERSION.SDK_INT >= 30) {
+                val nav = navBarHeightPx()
+                if (nav > 0) setPadding(0, 0, 0, nav)
+            }
+        }, 800)
     }
 
     // ---------- निर्माण ----------
