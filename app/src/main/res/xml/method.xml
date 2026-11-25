@@ -2,7 +2,6 @@
 <input-method xmlns:android="http://schemas.android.com/apk/res/android"
     android:supportsSwitchingToNextInputMethod="true">
     <subtype
-        android:icon="@mipmap/ic_launcher"
         android:imeSubtypeLocale="en_IN"
         android:imeSubtypeMode="keyboard"
         android:label="@string/ime_name" />
