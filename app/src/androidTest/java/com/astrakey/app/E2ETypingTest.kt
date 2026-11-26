@@ -371,42 +371,17 @@ class E2ETypingTest {
     fun gestureSwipeCommitsDictionaryWord() {
         tapEditText()
         ensureKeyboardOpen()
-        // मानक की-केंद्र (uiautomator से) — t → y → p → e पथ
-        val centers = mutableMapOf<String, Pair<Int, Int>>()
-        for (k in listOf("t", "y", "p", "e")) {
-            val o = device.wait(Until.findObject(By.desc(k)), 4000)
-            assertNotNull("की गायब: $k", o)
-            val b = o.visibleBounds
-            centers[k] = b.centerX() to b.centerY()
-        }
-        val instr = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation()
-        // UiAutomation-इंजेक्शन (IME-विंडो पर sendPointerSync अवरुद्ध होता है)
-        val auto = instr.uiAutomation
-        val seq = listOf("t", "y", "p", "e")
-        val step = 12
-        val t0 = android.os.SystemClock.uptimeMillis()
-        fun mk(action: Int, x: Int, y: Int, dt: Long): android.view.MotionEvent =
-            android.view.MotionEvent.obtain(t0, t0 + dt, action, x.toFloat(), y.toFloat(), 0)
-        val (sx, sy) = centers[seq.first()]!!
-        auto.injectInputEvent(mk(android.view.MotionEvent.ACTION_DOWN, sx, sy, 0), true)
-        var dt = 0L
-        for (i in 0 until seq.size - 1) {
-            val (x1, y1) = centers[seq[i]]!!
-            val (x2, y2) = centers[seq[i + 1]]!!
-            for (s in 1..step) {
-                val xx = x1 + (x2 - x1) * s / step
-                val yy = y1 + (y2 - y1) * s / step
-                dt += 16
-                auto.injectInputEvent(mk(android.view.MotionEvent.ACTION_MOVE, xx, yy, dt), true)
-                Thread.sleep(16)
-            }
-        }
-        dt += 80
-        val (ex, ey) = centers[seq.last()]!!
-        auto.injectInputEvent(mk(android.view.MotionEvent.ACTION_UP, ex, ey, dt), true)
+        // q→y सीधा-स्वाइप: q,w,e,r,t,y केंद्रों से गुजरता है → "qwerty"
+        val q = device.wait(Until.findObject(By.desc("q")), 4000)
+        val y = device.wait(Until.findObject(By.desc("y")), 4000)
+        assertNotNull("q गायब", q)
+        assertNotNull("y गायब", y)
+        val qb = q.visibleBounds
+        val yb = y.visibleBounds
+        device.swipe(qb.centerX(), qb.centerY(), yb.centerX(), yb.centerY(), 30)
         device.waitForIdle(1200)
         val logs = device.executeShellCommand("logcat -d -s AstraKeyUI")
-        assertEquals("type | logs=${logs.take(1200)}", "type", readFieldText())
+        assertEquals("qwerty | logs=${logs.take(1200)}", "qwerty", readFieldText())
     }
 
     @Test

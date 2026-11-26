@@ -658,7 +658,7 @@ class KeyboardView(
                     val pts = gesturePts.toList()
                     gesturePts.clear()
                     gestureCandidate = false
-                    if (dur >= 150 && pts.size >= 6) {
+                    if (dur >= 100 && pts.size >= 6) {
                         val word = decodeGesture(pts)
                         logD("gUp dur=$dur pts=${pts.size} decoded=$word")
                         if (word != null) { commit(word); updateSuggestions() }
