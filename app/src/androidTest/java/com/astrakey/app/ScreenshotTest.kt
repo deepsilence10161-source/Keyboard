@@ -250,10 +250,9 @@ class ScreenshotTest {
         cm2.setPrimaryClip(android.content.ClipData.newPlainText("test", "पेस्ट-चिप पाठ v12"))
         setStr("lang_mode", "en")
         openKb()
-        tapKey("Ctrl")
-        tapKey("a")
-        tapKey("backspace")
-        device.waitForIdle(500)
+        // क्षेत्र-सीधा-खाली (की-टैप-क्षेत्र-चयन-शेष-जाल-से-बचाव)
+        try { device.findObject(androidx.test.uiautomator.By.clazz("android.widget.EditText"))?.setText("") } catch (_: Exception) {}
+        device.waitForIdle(600)
         shot("16_paste_chip.png")
 
         // बहाली — डार्क + अंग्रेज़ी + पूर्ण-मोड
