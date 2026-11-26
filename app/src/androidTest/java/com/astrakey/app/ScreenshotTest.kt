@@ -257,15 +257,18 @@ class ScreenshotTest {
         openKb()
         shot("16_paste_chip.png")
 
-        // 17 — कैप्स-लॉक (shift-LOCK → अपरकेस-चिपहला + accent-शिफ्ट; चिप-क्षण-जाल-से-'A'-टाइप-क्षण)
-        tapKey("shift")
-        tapKey("shift") // ऑटो-कैप-ON_ONCE→LOCK
-        tapKey("a")     // "A" कमिट — चिप-गायब + अपरकेस-दृश्य
-        device.waitForIdle(600)
+        // 17 — कैप्स-लॉक — निर्धारक: सफ़ाई+पुनर्खुलना (खाली-क्षेत्र=ऑटो-कैप ON_ONCE-गारंटीड) → 1-टैप=LOCK → "A"
+        closeKb()
+        androidx.test.core.app.ActivityScenario.launch(com.astrakey.app.MainActivity::class.java).onActivity { act ->
+            act.findViewById<android.widget.EditText>(com.astrakey.app.R.id.demoEdit).setText("")
+        }
+        openKb()
+        tapKey("shift") // ON_ONCE → LOCK
+        tapKey("a")     // "A" कमिट — अपरकेस + चिप-गायब + shift-accent दृश्य
+        device.waitForIdle(700)
         shot("17_caps_lock.png")
         tapKey("shift") // → OFF
-        tapKey("backspace")
-        tapKey("backspace")
+        repeat(2) { tapKey("Ctrl"); tapKey("a"); tapKey("backspace") }
 
         // बहाली — डार्क + अंग्रेज़ी + पूर्ण-मोड
         closeKb()
