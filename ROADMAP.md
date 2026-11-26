@@ -241,3 +241,12 @@ jobs:
 
 - **परिणाम (v0.4.0)**: CI रन 45721097073 (कमिट dc7780f) — **पूर्ण हरी झंडी**: यूनिट ✅ + APK ✅ + लाइव एमुलेटर E2E **7/7 पास** (नया keyboardSitsAboveNavBar सहित) — कीबोर्ड नेविगेशन-बार के ऊपर सत्यापित। APK 5.66MB → Drive `AstraKey-v0.4.0-debug-navfix-E2E-7tests.apk` (id 1FX9KB2WVdzbp9diZA4vMtfB2LHaqOhV-)।
 - नया बग (13): GIT_ASKPASS फ़ाइल का execute-bit स्नैपशॉट में नहीं बचा — push विफल; chmod 755 से सुधार। **हर सत्र-शुरुआत में chmod 755 askpass.sh जाँचें।**
+
+### 2026-11-26 — स्वचालित-परीक्षण युग + विज़ुअल-सत्यापन (v0.5.0)
+- उपयोगकर्ता-निर्देश: "मैं स्वयं परीक्षण नहीं करूँगा, तुम स्वयं करो हर चीज़" → स्थायी-नियम: शून्य-मैनुअल-परीक्षण।
+- दो-स्तरीय प्रणाली: (1) कार्य-E2E — 6 नए: longPressAltInsertsDigit (q→1), emojiPanelCommitsEmoji, clipboardPanelPastesFromHistory, hideButtonClosesAndReopensKeyboard, themeToggleFromSettingsAppliesAndTypingSurvives, ScreenshotTest (8 स्थितियाँ)।
+- (2) विज़ुअल-E2E — CI में स्क्रीनशॉट-कैप्चर → artifact → एजेंट स्वयं देखकर सत्यापित।
+- रन: 45724091846 F (Robolectric android-all डाउनलोड IOException — क्षणिक; यूनिट-पुनः-प्रयास जोड़ा), 45724289907 F (क्लिप-पैनल: चयन-पर-पेस्ट बदलता है — उचित व्यवहार; परीक्षण में चयन-समापन जोड़ा), 45725028312 S (13/13), 45725923424 S (स्क्रीनशॉट-artifact बना — MediaStore Download/AstraKey तकनीक: Gradle अनइंस्टॉल /Android/data मिटाता है — बग 14), 45726930679 S (स्वच्छता-फिक्स: आधार-स्थिति + भाषा-बहाली — रिसाव-निवारण)।
+- **एजेंट-दृश्य-निष्कर्ष (स्वयं आँखों से)**: डार्क थीम + नेव-ऊपर-बैठना ✅, Ctrl-मोड A/Z/X/C/V/Y नीले ✅, इमोजी-पैनल (हाल के+ग्रिड) ✅, क्लिपबोर्ड-पैनल (लाइव-इतिहास 3 प्रविष्टियाँ) ✅, लाइट-थीम ✅, हिंग्लिश सुझाव "कैसे" लाइव ✅।
+- APK v0.5.0 (code 6, 5.66MB) → Drive `AstraKey-v0.5.0-debug-E2E-14tests.apk` (id 1y6ucAEH-qCe0JCS7bMc-snakTzQdQKQU)।
+- स्क्रीनशॉट संग्रह: /home/user/screenshots/AstraKey/ (01–08)
