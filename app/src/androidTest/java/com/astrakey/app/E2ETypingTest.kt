@@ -377,7 +377,7 @@ class E2ETypingTest {
             val o = device.wait(Until.findObject(By.desc(k)), 4000)
             assertNotNull("की गायब: $k", o)
             val b = o.visibleBounds
-            centers[k] = (b.centerX) to (b.centerY)
+            centers[k] = b.centerX() to b.centerY()
         }
         val instr = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation()
         // कस्टम-पथ इंजेक्शन: DOWN → वेपॉइंट → UP (एक ही स्वाइप)
