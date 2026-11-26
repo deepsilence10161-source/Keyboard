@@ -305,3 +305,12 @@ jobs:
 - **परीक्षण-जाल-शिक्षाएँ**: (a) am start -S = लक्ष्य-प्रक्रिया-मृत्यु = instrumentation-स्वयं-मृत (androidTest-ऐप-प्रक्रिया-में-चलता) — **कभी-नहीं**; ActivityScenario.onActivity-मुख्य-थ्रेड-setText-विधा; (b) Ctrl+a-टैप-क्षेत्र-चयन-शेष-रहता (उपयोगकर्ता-दृश्य-चयन≠प्रोग्राम-सफ़ाई); (c) SUGGEST-पैनल back-की-रहित — पैनल-परीक्षण-अंत-पुष्टि-सावधानी; (d) एक-backspace = केवल-अनुगामी-स्पेस — पूर्ण-क्षेत्र-सफ़ाई Ctrl+a-बाद-भी।
 - **रन-गाथा**: 45886471371 F (3-जाल) → 45887927264 S (30/30+39/39, शॉट-सुधार-चक्र: 769bcf2/7e22b64) → 45891399396 F (am -S-मृत्यु; Robolectric-क्षणिक-पुनःचालन) → **45892822965 S — E2E 30/30 + यूनिट 39/39 शत-प्रतिशत**।
 - APK v0.12.0 (5,707,741 B) → Drive `AstraKey-v0.12.0-debug-learn-pastechip-height.apk` (id 1Qwt-qcQRFrgLa3LAag5ZC9kTPAYOGFU-, ⭐)।
+
+### 2026-11-26 — कैप्स-लॉक + तीर-रिपीट + इनकॉग्निटो (v0.13.0) — निरंतर-मोड M13
+- (a) कैप्स-लॉक-सत्यापन: ShiftState.LOCK पूर्व-मौजूद (OFF→ON_ONCE→LOCK-चक्र; uppercase-कमिट-स्थिर) — E2E capsLockTypesUppercaseSticky (ABC→ABCD→e-बहाली; **जाल: खुलने-पर-ऑटो-कैप ON_ONCE-पहले-से → 2-टैप=OFF — 4-टैप-पहले-OFF-तक-फिर-2-टैप-LOCK**)।
+- (b) तीर-लंबा-दबाव-रिपीट: KeyView-रिपीट-पथ-विस्तार (ARROW_LEFT/RIGHT = startRepeat-योग्य; BACKSPACE-सहित-रोस्टर) + moveCursorRepeat (~18/स, 55ms-tick) — E2E arrowLongPressRepeatsCursorMove (2.5s-दबाव→x-क्षण→"xAbcd")।
+- (c) पीरियड-लंबा-दबाव = "," (SwiftKey-मानक; alt ":!"→",") — E2E periodLongPressInsertsComma ("A,"; **जाल: tapKey("A")-desc-अस्तित्वहीन — लोअरकेस-ही + ऑटो-कैप**)।
+- (d) इनकॉग्निटो-गार्ड: IME_FLAG_NO_PERSONALIZED_LEARNING → KeyboardView.noLearning → सीखना-सारे-3-बिंदु-बंद (स्पेस/चिप/ऑटो-सुधार) — E2E incognitoFlagSkipsLearning (**क्रम-जाल: दूसरी-ActivityScenario-launch = टैप-अगम्य — इनपुटटाइप-खुलने-से-पूर्व-सेट-अनिवार्य**)।
+- E2E +4 (34 कुल) + शॉट 17 (17_caps_lock — **पूरा-कीबोर्ड-अपरकेस+क्षेत्र-"A" पिक्सेल-सत्यापित**; जाल: पुराने-क्षेत्र-बंधन-आर्टिफैक्ट → निर्धारक-विधा सफ़ाई+पुनर्खुलना (ऑटो-कैप-गारंटी) → 1-टैप-LOCK → A-कमिट)।
+- **रन-गाथा**: 45894888400 F (4-जाल) → **45896534261 S — E2E 34/34 + यूनिट 39/39** → शॉट-सुधार-चक्र (f5ae0d2, be119a0) → **45899328422 S चरम-हरा**।
+- APK v0.13.0 (5,708,309 B) → Drive `AstraKey-v0.13.0-debug-capslock-arrowrepeat-incognito.apk` (id 1pckSbIF7QTnp13tZLuYbD5OLJ5nR_xBF, ⭐)।
