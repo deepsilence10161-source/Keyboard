@@ -11,6 +11,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: gradlew निष्पादन-अनुमति (स्नैपशॉट-मोड-रक्षा)
+        run: chmod +x gradlew
+
       - name: JDK 17 सेटअप
         uses: actions/setup-java@v4
         with:
