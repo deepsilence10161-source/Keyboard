@@ -674,8 +674,8 @@ class E2ETypingTest {
         val pad = device.wait(Until.findObject(By.desc("spacebar")), 4000)
         assertNotNull("spacebar गायब", pad)
         val pb = pad.visibleBounds
-        // स्पेसबार पर बाएँ-घसीटना → कर्सर-बाएँ (प्रति 22dp एक-कदम)
-        device.swipe(pb.centerX(), pb.centerY(), pb.centerX() - device.displayWidth / 4, pb.centerY(), 12)
+        // स्पेसबार पर बाएँ-घसीटना → कर्सर-बाएँ (प्रति 22dp एक-कदम; ~40px = 1-कदम CI-घनत्व)
+        device.swipe(pb.centerX(), pb.centerY(), pb.centerX() - device.displayWidth / 8, pb.centerY(), 12)
         device.waitForIdle(1000)
         tapKey("spacebar") // पैड-बंद (स्पेस-सम्मिलन नहीं)
         device.waitForIdle(500)

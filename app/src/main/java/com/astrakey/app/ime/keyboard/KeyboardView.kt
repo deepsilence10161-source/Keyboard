@@ -605,24 +605,23 @@ class KeyboardView(
         tv.maxLines = 2
         row.addView(tv)
         row.setOnClickListener { icProvider()?.commitText(entry, 1) }
-        row.setOnLongClickListener {
-            // क्लिप-लंबा-दबाव-मेनू: पिन/अनपिन · संपादित · मिटाओ (v0.10.0)
-            val opts = if (pinned)
-                arrayOf("अनपिन", "संपादित करो", "मिटाओ")
-            else arrayOf("पिन करो", "संपादित करो", "मिटाओ")
+        row.setOnLongClickListener { v ->
+            // क्लिप-लंबा-दबाव-मेनू (PopupMenu — एंकर-व्यू, IME-विंडो-अंदर विश्वसनीय): पिन · संपादित · मिटाओ (v0.10.0)
             try {
-                val dlg = android.app.AlertDialog.Builder(context)
-                    .setTitle(if (entry.length > 24) entry.take(24) + "…" else entry)
-                    .setItems(opts) { _, which ->
-                        when (which) {
-                            0 -> commands.togglePin(entry)
-                            1 -> editClipDialog(entry)
-                            2 -> commands.deleteClip(entry)
-                        }
-                        rebuildAll()
+                val pm = android.widget.PopupMenu(context, v)
+                pm.menu.add(if (pinned) "अनपिन" else "पिन करो")
+                pm.menu.add("संपादित करो")
+                pm.menu.add("मिटाओ")
+                pm.setOnMenuItemClickListener { mi ->
+                    when (mi.title) {
+                        "पिन करो", "अनपिन" -> commands.togglePin(entry)
+                        "संपादित करो" -> editClipDialog(entry)
+                        "मिटाओ" -> commands.deleteClip(entry)
                     }
-                    .show()
-                dlg.getButton(android.app.AlertDialog.BUTTON_POSITIVE)?.isFocusable = false
+                    rebuildAll()
+                    true
+                }
+                pm.show()
             } catch (_: Exception) {
                 commands.togglePin(entry)
                 rebuildAll()
