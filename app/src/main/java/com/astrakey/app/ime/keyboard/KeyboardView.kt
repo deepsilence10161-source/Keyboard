@@ -807,14 +807,21 @@ class KeyboardView(
         return false
     }
 
-    /** कर्सर-पूर्व शब्द (+अनुगामी-स्पेस) मिटाओ */
+    /** कर्सर-पूर्व शब्द (+अनुगामी-स्पेस) मिटाओ — खाली-क्षेत्र पर ऑटो-कैप पुनर्विचार */
     private fun deleteLastWord() {
         val ic = icProvider() ?: return
         val before = ic.getTextBeforeCursor(48, 0) ?: return
         var n = 0
         while (n < before.length && before[before.length - 1 - n] == ' ') n++
         while (n < before.length && before[before.length - 1 - n].isLetterOrDigit()) n++
-        if (n > 0) ic.deleteSurroundingText(n, 0)
+        if (n > 0) {
+            ic.deleteSurroundingText(n, 0)
+            // क्षेत्र खाली हुआ तो अगला-शब्द बड़े-अक्षर से (ऑटो-कैप पुनर्विचार)
+            val info = editorInfoProvider()
+            val now = ic.getTextBeforeCursor(1, 0) ?: ""
+            val capOk = info != null && (info.inputType and android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES) != 0
+            if (capOk && now.isEmpty() && shift == ShiftState.OFF) { shift = ShiftState.ON_ONCE; refreshShiftDisplay() }
+        }
         updateSuggestions()
     }
 
