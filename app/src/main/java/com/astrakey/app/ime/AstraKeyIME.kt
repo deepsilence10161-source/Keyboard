@@ -186,6 +186,9 @@ class AstraKeyIME : InputMethodService() {
     override fun onStartInputView(editorInfo: android.view.inputmethod.EditorInfo?, restarting: Boolean) {
         super.onStartInputView(editorInfo, restarting)
         applyUiMode()
+        // इनकॉग्निटो-क्षेत्र (v0.13.0) — NO_PERSONALIZED_LEARNING → सीखना-बंद
+        keyboardView?.noLearning = (editorInfo?.inputType ?: 0) and
+            android.view.inputmethod.EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING != 0
         keyboardView?.onInputStarted()
     }
 

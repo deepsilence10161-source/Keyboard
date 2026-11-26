@@ -257,6 +257,13 @@ class ScreenshotTest {
         openKb()
         shot("16_paste_chip.png")
 
+        // 17 — कैप्स-लॉक (shift-डबल-टैप → LOCK)
+        tapKey("shift")
+        tapKey("shift")
+        device.waitForIdle(400)
+        shot("17_caps_lock.png")
+        tapKey("shift") // → OFF
+
         // बहाली — डार्क + अंग्रेज़ी + पूर्ण-मोड
         closeKb()
         setPref("theme_dark", true)

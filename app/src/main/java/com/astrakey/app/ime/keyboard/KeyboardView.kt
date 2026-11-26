@@ -62,6 +62,8 @@ class KeyboardView(
     private var pasteSlot: TextView? = null
     private var lastPastedClip: String? = null
     private var kbHeightMul = 1f
+    /** इनकॉग्निटो (IME_FLAG_NO_PERSONALIZED_LEARNING) — सीखना-बंद */
+    var noLearning = false
     private val letterKeyViews: MutableList<KeyView> = mutableListOf()
     private val allKeyViews: MutableList<KeyView> = mutableListOf()
     private var shiftKeyView: KeyView? = null
@@ -384,7 +386,7 @@ class KeyboardView(
         row.addView(buildKey(KeyDef("", action = KeyAction.EMOJI, iconRes = R.drawable.ic_emoji), rowH))
         row.addView(buildKey(KeyDef(",", alt = ";"), rowH))
         row.addView(buildKey(KeyDef(spaceLabel(), output = " ", isSpecial = true, action = KeyAction.SPACE, widthWeight = 4.6f), rowH))
-        row.addView(buildKey(KeyDef(".", alt = ":!"), rowH))
+        row.addView(buildKey(KeyDef(".", alt = ","), rowH))
         row.addView(buildKey(KeyDef("", isSpecial = true, action = KeyAction.ENTER, iconRes = R.drawable.ic_enter, widthWeight = 1.5f), rowH))
         return row
     }
@@ -416,7 +418,15 @@ class KeyboardView(
         kv.hapticEnabled = hapticOn
         allKeyViews.add(kv)
         kv.onKeyTap = { k -> handleKey(k) }
+        // लंबा-दबाव-रिपीट (v0.13.0) — कर्सर-दोहराव (~18/स)
+        kv.onKeyRepeatStart = { k -> moveCursorRepeat(k) }
+        kv.onKeyRepeatTick = { k -> moveCursorRepeat(k) }
         return kv
+    }
+
+    private fun moveCursorRepeat(k: KeyDef) {
+        val dir = if (k.action == KeyAction.ARROW_LEFT) -1 else 1
+        commands.moveCursor(icProvider(), dir)
     }
 
     private fun buildKey(def: KeyDef, rowH: Int): KeyView {
@@ -705,7 +715,7 @@ class KeyboardView(
                             val capped = if (w[0].isUpperCase()) fix.replaceFirstChar { it.uppercaseChar() } else fix
                             icProvider()?.deleteSurroundingText(w.length, 0)
                             commit(capped + " ")
-                            if (fix.length >= 2) { engine.learn(fix.lowercase()); saveLearned() }
+                            if (fix.length >= 2 && !noLearning) { engine.learn(fix.lowercase()); saveLearned() }
                             updateSuggestionsAfterSpace()
                             return
                         }
@@ -720,7 +730,7 @@ class KeyboardView(
                 } else {
                     commit(" ")
                 }
-                if (typedWord.length >= 2 && typedWord.all { it.isLetter() } && langMode != "deva") {
+                if (typedWord.length >= 2 && typedWord.all { it.isLetter() } && langMode != "deva" && !noLearning) {
                     engine.learn(typedWord)
                     saveLearned()
                 }
@@ -1233,7 +1243,7 @@ class KeyboardView(
         if (ic != null && lastWordLen > 0) ic.deleteSurroundingText(lastWordLen, 0)
         commit(word + " ")
         lastWordLen = 0
-        if (word.length >= 2 && word.all { it.isLetter() } && langMode != "deva") {
+        if (word.length >= 2 && word.all { it.isLetter() } && langMode != "deva" && !noLearning) {
             engine.learn(word.lowercase())
             saveLearned()
         }

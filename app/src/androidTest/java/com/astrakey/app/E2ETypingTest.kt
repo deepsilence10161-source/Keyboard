@@ -843,4 +843,95 @@ class E2ETypingTest {
         ctx.getSharedPreferences("astrakey_prefs", android.content.Context.MODE_PRIVATE)
             .edit().putString("kb_height", "normal").commit()
     }
+
+    @Test
+    fun capsLockTypesUppercaseSticky() {
+        tapEditText()
+        ensureKeyboardOpen()
+        repeat(2) { tapKey("Ctrl"); tapKey("a"); tapKey("backspace") }
+        // shift-डबल-टैप → LOCK (OFF→ON_ONCE→LOCK)
+        tapKey("shift")
+        tapKey("shift")
+        listOf("a", "b", "c").forEach { tapKey(it) }
+        device.waitForIdle(600)
+        assertEquals("ABC", readFieldText())
+        // LOCK-स्थिरता — अगला-अक्षर-भी-अपरकेस
+        tapKey("d")
+        device.waitForIdle(400)
+        assertEquals("ABCD", readFieldText())
+        // तीसरा-टैप → OFF
+        tapKey("shift")
+        tapKey("e")
+        device.waitForIdle(400)
+        assertEquals("ABCDe", readFieldText())
+        repeat(2) { tapKey("Ctrl"); tapKey("a"); tapKey("backspace") }
+    }
+
+    @Test
+    fun arrowLongPressRepeatsCursorMove() {
+        tapEditText()
+        ensureKeyboardOpen()
+        repeat(2) { tapKey("Ctrl"); tapKey("a"); tapKey("backspace") }
+        listOf("A", "b", "c", "d").forEach { tapKey(it) }
+        device.waitForIdle(500)
+        // तीर-बाएँ-लंबा-दबाव (2.5s) → रिपीट → कर्सर-आदि-में (4-चर-शब्द < रिपीट-गणना)
+        val ak = device.wait(Until.findObject(By.desc("arrow_left")), 4000)
+        assertNotNull("arrow_left गायब", ak)
+        val ab = ak.visibleBounds
+        device.swipe(
+            arrayOf(
+                android.graphics.Point(ab.centerX(), ab.centerY()),
+                android.graphics.Point(ab.centerX() + 1, ab.centerY())
+            ), 2500
+        )
+        device.waitForIdle(800)
+        tapKey("x")
+        device.waitForIdle(600)
+        assertEquals("xAbcd", readFieldText())
+        repeat(2) { tapKey("Ctrl"); tapKey("a"); tapKey("backspace") }
+    }
+
+    @Test
+    fun periodLongPressInsertsComma() {
+        tapEditText()
+        ensureKeyboardOpen()
+        repeat(2) { tapKey("Ctrl"); tapKey("a"); tapKey("backspace") }
+        tapKey("A")
+        device.waitForIdle(400)
+        longTapKey(".") // लंबा-दबाव → "," (SwiftKey-मानक)
+        device.waitForIdle(600)
+        assertEquals("A,", readFieldText())
+        repeat(2) { tapKey("Ctrl"); tapKey("a"); tapKey("backspace") }
+    }
+
+    @Test
+    fun incognitoFlagSkipsLearning() {
+        val ctx = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
+        val prefs = ctx.getSharedPreferences("astrakey_prefs", android.content.Context.MODE_PRIVATE)
+        prefs.edit().remove("learned_words").commit()
+        tapEditText()
+        ensureKeyboardOpen()
+        // क्षेत्र-इनकॉग्निटो-चिह्नित (ActivityScenario-मुख्य-थ्रेड)
+        androidx.test.core.app.ActivityScenario.launch(com.astrakey.app.MainActivity::class.java).onActivity { act ->
+            val ed = act.findViewById<android.widget.EditText>(com.astrakey.app.R.id.demoEdit)
+            ed.inputType = ed.inputType or android.view.inputmethod.EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING
+        }
+        // कीबोर्ड-पुनर्आरंभ (onStartInputView-फ़्लैग-पढ़ना)
+        device.pressBack()
+        Thread.sleep(400)
+        tapEditText()
+        ensureKeyboardOpen()
+        // "flurb" टाइप + स्पेस — सीखना-होना-चाहिए-बंद
+        listOf("f", "l", "u", "r", "b").forEach { tapKey(it) }
+        tapKey("spacebar")
+        device.waitForIdle(800)
+        val learned = prefs.getString("learned_words", null)
+        assertTrue("इनकॉग्निटो-में-सीखा: $learned", learned.isNullOrEmpty())
+        // सफ़ाई + चिह्न-बहाली
+        repeat(2) { tapKey("Ctrl"); tapKey("a"); tapKey("backspace") }
+        androidx.test.core.app.ActivityScenario.launch(com.astrakey.app.MainActivity::class.java).onActivity { act ->
+            act.findViewById<android.widget.EditText>(com.astrakey.app.R.id.demoEdit)
+                .inputType = android.text.InputType.TYPE_CLASS_TEXT
+        }
+    }
 }

@@ -150,7 +150,9 @@ class KeyView @JvmOverloads constructor(
                 longFired = false
                 isPressed = true
                 if (hapticEnabled) performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                if (key.action == KeyAction.BACKSPACE) {
+                if (key.action == KeyAction.BACKSPACE ||
+                    key.action == KeyAction.ARROW_LEFT || key.action == KeyAction.ARROW_RIGHT) {
+                    // रिपीट-योग्य — बैकस्पेस (मिटाना) + तीर (कर्सर-दोहराव, v0.13.0)
                     startRepeat()
                 } else if (key.alt != null || key.action == KeyAction.SPACE || key.action == KeyAction.NUMBER_TOGGLE) {
                     // लंबा-दबाव केवल-सार्थक-कीज़-पर अनुसूचित — alt-शून्य-कीज़ (अक्षर/सेवा) पर
