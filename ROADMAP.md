@@ -279,3 +279,11 @@ jobs:
 - **रन 45839720758 S — E2E 20/20 + यूनिट 26/26** (नए: oneHandedLeftNarrowsKeyboardAndTypes, floatingDragRaisesKeyboardAndTypingSurvives — device.swipe पट्टी-घसीटना + spacebar-ऊपर-उठना-पुष्टि, sunsetThemeSwitchAndTypingSurvives; यूनिट +2 नई-पटल); स्क्रीनशॉट 13-फ़ाइलें (11_floating — पट्टी+संकरा ✓, 12_onehand_left ✓, 13_sunset ✓)।
 - APK v0.8.0 (5,696,153 B) → Drive `AstraKey-v0.8.0-debug-float-onehand-8themes.apk` (id 15wjrFHidmizkw2YeWsQQMjFLSbmsHzGh, ⭐)।
 - **स्थायी-शिक्षाएँ**: (a) CI-एमुलेटर 320×640 — activity_main में नया-UI जोड़ते समय demoEdit स्क्रीन-में रखना अनिवार्य (सब-सबूत उसी क्षेत्र पर); (b) IME-विंडो-ऊँचाई बदलना = window.setLayout + host-गारंटी दोनों (एक अकेला अधूरा); (c) android-emulator-runner स्क्रिप्ट = पंक्ति-दर-पंक्ति sh।
+
+### 2026-11-26 — देवनागरी-सीधी-क्वर्टी + डबल-स्पेस + बैकस्पेस-स्वाइप (v0.9.0) — निरंतर-मोड M9
+- भाषा-प्रणाली विस्तार: langEnglish-बूल → **langMode 3-स्थिति** (en/translit/deva; prefs lang_mode, lang_english-संगत-आधार) — चक्र EN→अ(translit-हिंग्लिश-सुझाव)→क(देवनागरी-सीधी)→EN; टूलबार-संकेत अ/क/EN; hindiRows() (पूर्व-निर्मित) deva-मोड में सीधे; deva में सुझाव-शून्य + नंबर-रो-विकल्प-निष्क्रिय।
+- डबल-स्पेस-पूर्णविराम: अक्षर+स्पेस के बाद दूसरा-स्पेस → पूर्ववर्ती-स्पेस-मिटाकर ". " (मानक-IME)।
+- बैकस्पेस-स्वाइप-शब्द-मिटाना: pointInBackspace-पहचान + बाएँ-60dp-घसीटने पर deleteLastWord (शब्द+अनुगामी-स्पेस; abortTouch-रिपीट-रक्षा) + **खाली-क्षेत्र पर ऑटो-कैप-पुनर्विचार** (परीक्षण-सबूत-सुधार: पहला-रन "x" बनाम "X" — shift-बहाली-शेष)।
+- E2E +3: devanagariDirectTypingCommitsHindi (2×language → क-की → "क"), doubleSpaceInsertsPeriod ("A. "), backspaceSwipeDeletesWholeWord (device.swipe बाएँ → खाली → "X" — कैप-पुनर्विचार-सहित); यूनिट +3 (KeyboardLayoutsTest: hindiRows/qwerty/ctrlTargets)।
+- **रन 45842023939 F (1/23 — केवल कैप-पुनर्विचार-शेष)** → सुधार `4476adf` → **45843445562 S — E2E 23/23 + यूनिट 29/29 शत-प्रतिशत**; स्क्रीनशॉट 14-फ़ाइलें (14_devanagari — पूरी-वर्णमाला+क-संकेत ✓)।
+- APK v0.9.0 (5,697,273 B) → Drive `AstraKey-v0.9.0-debug-devanagari-dblspace-swipe-cut.apk` (id 17iY1gA5X4EFykk7IIpMwY3srIyULArLm, ⭐)।
