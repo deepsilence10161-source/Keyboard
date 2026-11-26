@@ -616,7 +616,9 @@ class KeyboardView(
             val i = android.content.Intent(context, com.astrakey.app.VoiceInputActivity::class.java)
             i.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_NO_HISTORY)
             context.startActivity(i)
-        } catch (_: Exception) { toast(context, "वाक्-पहचान आरंभ विफल") }
+        } catch (_: Exception) {
+            android.widget.Toast.makeText(context.applicationContext, "वाक्-पहचान आरंभ विफल", android.widget.Toast.LENGTH_SHORT).show()
+        }
     }
 
     // ---------- जेस्चर-टाइपिंग (स्वाइप → शब्द) ----------
