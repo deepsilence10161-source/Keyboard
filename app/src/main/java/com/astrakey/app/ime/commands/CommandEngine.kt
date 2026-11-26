@@ -148,6 +148,19 @@ class CommandEngine(private val appContext: Context) {
         return true
     }
 
+    /** क्लिप-मिटाना — पिन/इतिहास दोनों से (v0.10.0 लंबा-दबाव-मेनू) */
+    fun deleteClip(text: String) {
+        saveList("clip_pinned", pinnedClips() - text)
+        saveList("clip_history", clipHistory() - text)
+    }
+
+    /** क्लिप-संपादन — दोनों-सूची में प्रतिस्थापन (पिन-स्थिति रक्षित) */
+    fun updateClip(oldText: String, newText: String) {
+        if (newText.isBlank()) return
+        saveList("clip_pinned", pinnedClips().map { if (it == oldText) newText else it })
+        saveList("clip_history", clipHistory().map { if (it == oldText) newText else it })
+    }
+
     fun recordClip(text: CharSequence?) {
         val t = text?.toString() ?: return
         if (t.isBlank()) return

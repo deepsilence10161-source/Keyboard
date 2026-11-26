@@ -173,10 +173,10 @@ class KeyView @JvmOverloads constructor(
         return true
     }
 
-    /** लंबा-दबाव → वैकल्पिक अक्षर (अल्ट) */
+    /** लंबा-दबाव → वैकल्पिक अक्षर (अल्ट) — alt-शून्य हुए भी सेवा-हैंडलर तक (स्पेसबार-पैड आदि) */
     fun fireLongPress() {
         longFired = true
-        if (key.alt != null) onKeyAlt?.invoke(key)
+        onKeyAlt?.invoke(key)
     }
 
     private fun startRepeat() {
@@ -193,7 +193,7 @@ class KeyView @JvmOverloads constructor(
 
     private fun scheduleAlt() {
         val r = Runnable {
-            if (!longFired && key.alt != null) fireLongPress()
+            if (!longFired) fireLongPress()
         }
         altRunnable = r
         handler.postDelayed(r, longPressMs)

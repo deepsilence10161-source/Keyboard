@@ -439,6 +439,7 @@ class KeyboardView(
         kv.onKeyTap = { k -> handleKey(k) }
         kv.onKeyAlt = { k ->
             if (k.action == KeyAction.NUMBER_TOGGLE) { panel = Panel.SYMBOLS; rebuildAll() }
+            else if (k.action == KeyAction.SPACE) toggleCursorPad()
             else k.alt?.let { commit(it) }
         }
         kv.onKeyRepeatStart = { _ -> deleteOne() }
@@ -447,7 +448,7 @@ class KeyboardView(
         return kv
     }
 
-    private fun spaceLabel(): String = if (langMode == "en") "English" else "हिंदी"
+    private fun spaceLabel(): String = if (cursorPad) "◀ ▶" else if (langMode == "en") "English" else "हिंदी"
 
     // ---------- पैनल (इमोजी / क्लिपबोर्ड) ----------
 
@@ -605,11 +606,49 @@ class KeyboardView(
         row.addView(tv)
         row.setOnClickListener { icProvider()?.commitText(entry, 1) }
         row.setOnLongClickListener {
-            commands.togglePin(entry)
-            rebuildAll()
+            // क्लिप-लंबा-दबाव-मेनू: पिन/अनपिन · संपादित · मिटाओ (v0.10.0)
+            val opts = if (pinned)
+                arrayOf("अनपिन", "संपादित करो", "मिटाओ")
+            else arrayOf("पिन करो", "संपादित करो", "मिटाओ")
+            try {
+                val dlg = android.app.AlertDialog.Builder(context)
+                    .setTitle(if (entry.length > 24) entry.take(24) + "…" else entry)
+                    .setItems(opts) { _, which ->
+                        when (which) {
+                            0 -> commands.togglePin(entry)
+                            1 -> editClipDialog(entry)
+                            2 -> commands.deleteClip(entry)
+                        }
+                        rebuildAll()
+                    }
+                    .show()
+                dlg.getButton(android.app.AlertDialog.BUTTON_POSITIVE)?.isFocusable = false
+            } catch (_: Exception) {
+                commands.togglePin(entry)
+                rebuildAll()
+            }
             true
         }
         return row
+    }
+
+    /** क्लिप-संपादन-संवाद — पूर्व-भरा-क्षेत्र, सहेजने पर updateClip */
+    private fun editClipDialog(entry: String) {
+        try {
+            val input = android.widget.EditText(context)
+            input.setText(entry)
+            val pad = dp(16)
+            input.setPadding(pad, pad, pad, pad)
+            android.app.AlertDialog.Builder(context)
+                .setTitle("क्लिप संपादित करो")
+                .setView(input)
+                .setPositiveButton("सहेजो") { _, _ ->
+                    commands.updateClip(entry, input.text.toString())
+                    rebuildAll()
+                }
+                .setNegativeButton("रद्द", null)
+                .show()
+        } catch (_: Exception) {}
     }
 
     private fun addRecentEmoji(e: String) {
@@ -634,6 +673,11 @@ class KeyboardView(
             KeyAction.SHIFT -> { cycleShift(); refreshShiftDisplay() }
             KeyAction.BACKSPACE -> { deleteOne(); updateSuggestions() }
             KeyAction.SPACE -> {
+                // कर्सर-पैड-मोड में टैप = पैड-बंद; टॉगल के 800ms-भीतर का टैप = लंबा-दबाव-रिलीज़-अवशेष (निगल लो)
+                if (cursorPad) {
+                    if (System.currentTimeMillis() - padToggledAt < 800) return
+                    cursorPad = false; rebuildAll(); return
+                }
                 // डबल-स्पेस → पूर्णविराम (मानक-IME: अक्षर+स्पेस के बाद दूसरा-स्पेस ". " बनता है)
                 val ic = icProvider()
                 val before2 = ic?.getTextBeforeCursor(2, 0)
@@ -790,6 +834,63 @@ class KeyboardView(
     /** पूरे कीबोर्ड पर स्पर्श-निरीक्षण — स्वाइप-पथ संग्रहित, टैप बाल-कीज़ तक जाते हैं */
     private fun logD(msg: String) { android.util.Log.d("AstraKeyUI", msg) }
 
+    // ---------- स्पेसबार-कर्सर-पैड (लंबा-दबाव → क्षण-तीर-मोड — v0.10.0) ----------
+
+    private var cursorPad = false
+    private var padDrag = false
+    private var padLastX = 0f
+    private var padAccum = 0f
+    private var padToggledAt = 0L
+
+    private fun pointInSpacebar(x: Float, y: Float): Boolean {
+        val root = IntArray(2); getLocationInWindow(root)
+        for (kv in allKeyViews) if (kv.key.action == KeyAction.SPACE && kv.isShown) {
+            val loc = IntArray(2); kv.getLocationInWindow(loc)
+            val lx = x - (loc[0] - root[0]); val ly = y - (loc[1] - root[1])
+            if (lx >= 0 && lx <= kv.width && ly >= 0 && ly <= kv.height) return true
+        }
+        return false
+    }
+
+    private fun toggleCursorPad() {
+        cursorPad = !cursorPad
+        padToggledAt = System.currentTimeMillis()
+        rebuildAll()
+    }
+
+    /** कर्सर-पैड: स्पेसबार पर घसीटना → dpad-कर्सर-गति (प्रति dp(22) एक-कदम) */
+    private fun padTouch(ev: MotionEvent): Boolean {
+        when (ev.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                if (!pointInSpacebar(ev.x, ev.y)) return false
+                padDrag = true
+                padLastX = ev.x
+                padAccum = 0f
+                allKeyViews.forEach { if (it.key.action == KeyAction.SPACE) it.abortTouch() }
+                return true
+            }
+            MotionEvent.ACTION_MOVE -> if (padDrag) {
+                padAccum += ev.x - padLastX
+                padLastX = ev.x
+                val step = dp(22)
+                while (padAccum >= step) {
+                    icProvider()?.sendKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_DPAD_RIGHT))
+                    padAccum -= step
+                }
+                while (padAccum <= -step) {
+                    icProvider()?.sendKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_DPAD_LEFT))
+                    padAccum += step
+                }
+                return true
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> if (padDrag) {
+                padDrag = false
+                return true
+            }
+        }
+        return false
+    }
+
     // ---------- बैकस्पेस-स्वाइप (बाएँ-घसीटने से पूरा-शब्द-मिटाना — SwiftKey-पैटर्न) ----------
 
     private var bsStart = false
@@ -861,6 +962,8 @@ class KeyboardView(
                 }
             }
         }
+        // कर्सर-पैड — जेस्चर-संग्रह से पूर्व-पकड़ (सभी-भाषा-मोड)
+        if (cursorPad && panel == Panel.SUGGEST && padTouch(ev)) return true
         if (!gestureOn || panel != Panel.SUGGEST || langMode != "en") {
             logD("gSkip on=${gestureOn} panel=$panel lm=$langMode")
             return super.dispatchTouchEvent(ev)
@@ -1003,7 +1106,12 @@ class KeyboardView(
         if (panel != Panel.SUGGEST) return
         val w = currentWord()
         lastWordLen = w.length
-        val sug = if (lastWordLen > 0 && langMode != "deva") engine.suggest(w, hindiFirst = langMode == "translit").take(3) else emptyList()
+        var sug = if (lastWordLen > 0 && langMode != "deva") engine.suggest(w, hindiFirst = langMode == "translit").take(3) else emptyList()
+        // ताज़ा-शब्द-प्राथमिकता: टाइप-किया हुआ शब्द पहले-स्लॉट में (जैसा-लिखा-वैसा-भेजने के लिए)
+        if (w.length >= 2 && langMode != "deva") {
+            val rest = sug.filter { it != w }
+            if (sug.firstOrNull() != w) sug = (listOf(w) + rest).take(3)
+        }
         val sig = sug.joinToString("|")
         if (sig == lastSuggestionSignature) return
         lastSuggestionSignature = sig

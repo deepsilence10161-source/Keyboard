@@ -624,4 +624,63 @@ class E2ETypingTest {
         device.waitForIdle(600)
         assertEquals("X", readFieldText())
     }
+
+    @Test
+    fun clipLongPressMenuDeletesEntry() {
+        tapEditText()
+        ensureKeyboardOpen()
+        listOf("h", "e", "y").forEach { tapKey(it) }
+        device.waitForIdle(500)
+        tapKey("Ctrl"); tapKey("a")
+        tapKey("Ctrl"); tapKey("c")
+        tapKey("arrow_right")
+        device.waitForIdle(500)
+        tapKey("clipboard")
+        val entry = device.wait(Until.findObject(By.desc("clip_entry")), 6000)
+        assertNotNull("क्लिप-प्रविष्टि गायब", entry)
+        entry.longClick() // मेनू खुले
+        val del = device.wait(Until.findObject(By.text("मिटाओ")), 5000)
+        assertNotNull("मिटाओ-विकल्प गायब", del)
+        del.click()
+        device.waitForIdle(800)
+        // प्रविष्टि मिट गई (नई-सूची खाली-संदेश दिखाए)
+        assertEquals(0, device.findObjects(By.desc("clip_entry")).size)
+        tapKey("back")
+    }
+
+    @Test
+    fun suggestionRowShowsTypedWordFirst() {
+        tapEditText()
+        ensureKeyboardOpen()
+        // शब्दकोश-बाह्य-शब्द टाइप करो — पहला-स्लॉट वही शब्द दिखाए (जैसा-लिखा-वैसा)
+        listOf("z", "q", "x").forEach { tapKey(it) }
+        device.waitForIdle(800)
+        val typed = device.wait(Until.findObject(By.desc("Zqx")), 5000)
+        assertNotNull("टाइप-शब्द-स्लॉट गायब (पहला-स्लॉट)", typed)
+        typed.click()
+        device.waitForIdle(800)
+        assertEquals("Zqx ", readFieldText())
+    }
+
+    @Test
+    fun spacebarLongPressCursorPadMovesCursor() {
+        tapEditText()
+        ensureKeyboardOpen()
+        listOf("a", "b", "c").forEach { tapKey(it) }
+        device.waitForIdle(600)
+        assertEquals("Abc", readFieldText())
+        longTapKey("spacebar") // पैड-मोड (लेबल ◀ ▶)
+        device.waitForIdle(600)
+        val pad = device.wait(Until.findObject(By.desc("spacebar")), 4000)
+        assertNotNull("spacebar गायब", pad)
+        val pb = pad.visibleBounds
+        // स्पेसबार पर बाएँ-घसीटना → कर्सर-बाएँ (प्रति 22dp एक-कदम)
+        device.swipe(pb.centerX(), pb.centerY(), pb.centerX() - device.displayWidth / 4, pb.centerY(), 12)
+        device.waitForIdle(1000)
+        tapKey("spacebar") // पैड-बंद (स्पेस-सम्मिलन नहीं)
+        device.waitForIdle(500)
+        tapKey("x")
+        device.waitForIdle(600)
+        assertEquals("Abxc", readFieldText())
+    }
 }

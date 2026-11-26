@@ -226,6 +226,24 @@ class ScreenshotTest {
         openKb()
         shot("14_devanagari.png")
 
+        // 15 — क्लिप-लंबा-दबाव-मेनू (पिन/संपादित/मिटाओ)
+        closeKb()
+        setStr("lang_mode", "en")
+        val cm2 = InstrumentationRegistry.getInstrumentation().targetContext
+            .getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+        cm2.setPrimaryClip(android.content.ClipData.newPlainText("test", "मेनू-परीक्षण पाठ"))
+        openKb()
+        tapKey("clipboard")
+        val clipItem = device.wait(Until.findObject(By.desc("clip_entry")), 5000)
+        if (clipItem != null) {
+            clipItem.longClick()
+            shot("15_clip_menu.png")
+            val del = device.wait(Until.findObject(By.text("मिटाओ")), 3000)
+            del?.click()
+            device.waitForIdle(400)
+        }
+        tapKey("back")
+
         // बहाली — डार्क + अंग्रेज़ी + पूर्ण-मोड
         closeKb()
         setPref("theme_dark", true)
