@@ -231,8 +231,10 @@ class E2ETypingTest {
         listOf("n", "a", "m", "a", "s", "t", "e").forEach { tapKey(it) }
         device.waitForIdle(800)
 
-        // देवनागरी सुझाव दिखे और टैप पर क्षेत्र में बदले
-        val sugg = device.wait(Until.findObject(By.desc("नमस्ते")), 5000)
+        // देवनागरी सुझाव चिप — टेक्स्ट-गुण-से खोजो (in-place desc-अद्यतन = a11y-कैश-अप्रचलित-जाल;
+        // पिक्सेल-प्रमाणित: चिप-दिखता-है, text-घटना-ताज़ा) — desc-फ़ॉलबैक
+        val sugg = device.wait(Until.findObject(By.text("नमस्ते")), 5000)
+            ?: device.wait(Until.findObject(By.desc("नमस्ते")), 2000)
         if (sugg == null) {
             // पूर्ण-लॉग-फ़ाइल-चैनल (Gradle-लंबी-पंक्ति-कटौती-जाल-रक्षा) — ci.yml-diag adb-pull-करता-है
             device.executeShellCommand("mkdir -p /sdcard/Download/AstraKey")

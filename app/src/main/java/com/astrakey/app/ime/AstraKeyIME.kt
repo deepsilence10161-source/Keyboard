@@ -195,7 +195,6 @@ class AstraKeyIME : InputMethodService() {
         candidatesStart: Int, candidatesEnd: Int
     ) {
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
-        android.util.Log.d("AstraKeyUI", "onUpdateSel $newSelStart-$newSelEnd")
         keyboardView?.updateSuggestions()
     }
 

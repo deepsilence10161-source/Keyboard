@@ -668,7 +668,6 @@ class KeyboardView(
     // ---------- क्रियाएँ ----------
 
     private fun handleKey(k: KeyDef) {
-        logD("key tap=${k.label} act=${k.action} panel=$panel lm=$langMode")
         when (k.action) {
             KeyAction.SHIFT -> { cycleShift(); refreshShiftDisplay() }
             KeyAction.BACKSPACE -> { deleteOne(); updateSuggestions() }
@@ -780,12 +779,10 @@ class KeyboardView(
     }
 
     private fun commit(text: String) {
-        val ic = icProvider()
-        if (ic == null) { logD("commit ic-NULL text=$text"); return }
+        val ic = icProvider() ?: return
         val before = snap(ic)
         ic.commitText(text, 1)
         val after = snap(ic)
-        logD("commit done text=$text before=${before?.text?.length} after=${after?.text?.length}")
         if (before != null && after != null) {
             commands.pushUndo(before, after, text.length == 1 && text[0].isLetterOrDigit())
         }
@@ -953,7 +950,6 @@ class KeyboardView(
     }
 
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
-        logD("dTouch a=${ev.actionMasked} x=${ev.x.toInt()} y=${ev.y.toInt()}")
         // घसीटने-पट्टी स्पर्श — जेस्चर-संग्रह से पूर्ण-बाहर (पट्टी ऊपर उठती है, स्थानीय-निर्देशांक भ्रमित करते हैं)
         val inBar = floatBar.visibility == VISIBLE && ev.y <= floatBar.bottom + dp(4)
         if (inBar && ev.actionMasked == MotionEvent.ACTION_DOWN) barDrag = true
