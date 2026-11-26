@@ -39,6 +39,23 @@ class AstraKeyIME : InputMethodService() {
 
     private fun prefs() = getSharedPreferences("astrakey_prefs", MODE_PRIVATE)
 
+    override fun onCreate() {
+        super.onCreate()
+        // विंडो-विन्यास (onConfigureWindow) पहले-शो पर uiMode जानना ज़रूरी
+        uiMode = prefs().getString("ui_mode", "full") ?: "full"
+    }
+
+    /** विंडो-विन्यास: फ्लोट में पूर्ण-ऊँचाई (घसीटने-स्थान हेतु) — Gboard-पैटर्न */
+    override fun onConfigureWindow(win: android.view.Window, isFullscreen: Boolean, isCandidatesOnly: Boolean) {
+        super.onConfigureWindow(win, isFullscreen, isCandidatesOnly)
+        if (uiMode != "full") {
+            win.setLayout(
+                android.view.WindowManager.LayoutParams.MATCH_PARENT,
+                android.view.WindowManager.LayoutParams.MATCH_PARENT
+            )
+        }
+    }
+
     /** KeyboardView की फ्लोट-पट्टी से आदेश */
     private fun handleUi(action: String, dx: Float, dy: Float) {
         val kv = keyboardView ?: return
@@ -96,17 +113,11 @@ class AstraKeyIME : InputMethodService() {
         // Gboard-पैटर्न: फ्लोट में विंडो पूर्ण-ऊँचाई — घसीटने की जगह ऊपर मिलती है;
         // छू-क्षेत्र onComputeInsets से कीबोर्ड-सीमित रहता है, ऐप-विंडो contentTopInsets से सही सिकुड़ती है
         try {
-            if (narrow) {
-                setWindowLayoutMode(
-                    android.view.WindowManager.LayoutParams.MATCH_PARENT,
-                    android.view.WindowManager.LayoutParams.MATCH_PARENT
-                )
-            } else {
-                setWindowLayoutMode(
-                    android.view.WindowManager.LayoutParams.MATCH_PARENT,
-                    android.view.WindowManager.LayoutParams.WRAP_CONTENT
-                )
-            }
+            window?.window?.setLayout(
+                android.view.WindowManager.LayoutParams.MATCH_PARENT,
+                if (narrow) android.view.WindowManager.LayoutParams.MATCH_PARENT
+                else android.view.WindowManager.LayoutParams.WRAP_CONTENT
+            )
         } catch (_: Exception) {}
         val hlp = h.layoutParams
         if (hlp != null) {
