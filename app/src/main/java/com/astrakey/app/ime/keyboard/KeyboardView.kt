@@ -1136,6 +1136,7 @@ class KeyboardView(
             if (sug.firstOrNull() != w) sug = (listOf(w) + rest).take(3)
         }
         val sig = sug.joinToString("|")
+        logD("sug w=$w lm=$langMode sig=$sig")
         if (sig == lastSuggestionSignature) return
         lastSuggestionSignature = sig
         hintSlot?.visibility = if (sug.isEmpty()) VISIBLE else GONE
