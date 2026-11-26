@@ -28,7 +28,8 @@ class E2ETypingTest {
         // स्थिति-मोड-आधार — परीक्षण-क्रम के रिसाव से स्वतंत्र
         androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
             .getSharedPreferences("astrakey_prefs", android.content.Context.MODE_PRIVATE)
-            .edit().putString("ui_mode", "full").putInt("float_top", 0).putInt("float_tx", 0).commit()
+            .edit().putString("ui_mode", "full").putInt("float_top", 0).putInt("float_tx", 0)
+            .putString("lang_mode", "en").commit()
         ActivityScenario.launch(MainActivity::class.java)
         device.waitForIdle(3000)
     }
@@ -224,7 +225,8 @@ class E2ETypingTest {
         device.waitForIdle(800)
         assertEquals("नमस्ते ", readFieldText())
 
-        // स्थिति-बहाली — अंग्रेज़ी मोड (आगामी परीक्षणों के लिए शुद्ध आधार)
+        // स्थिति-बहाली — अंग्रेज़ी मोड (आगामी परीक्षणों के लिए शुद्ध आधार) — 3-चक्र: translit→deva→en
+        tapKey("language")
         tapKey("language")
         device.waitForIdle(400)
     }
@@ -574,5 +576,52 @@ class E2ETypingTest {
         Thread.sleep(300)
         tapEditText()
         ensureKeyboardOpen()
+    }
+
+    @Test
+    fun devanagariDirectTypingCommitsHindi() {
+        tapEditText()
+        ensureKeyboardOpen()
+        tapKey("language") // en → translit
+        tapKey("language") // translit → deva
+        device.waitForIdle(800)
+        // देवनागरी-क्वर्टी में सीधे टाइप
+        tapKey("क")
+        device.waitForIdle(800)
+        assertEquals("क", readFieldText())
+        tapKey("language") // deva → en
+    }
+
+    @Test
+    fun doubleSpaceInsertsPeriod() {
+        tapEditText()
+        ensureKeyboardOpen()
+        tapKey("a")
+        device.waitForIdle(400)
+        tapKey("spacebar")
+        device.waitForIdle(400)
+        tapKey("spacebar") // अक्षर+स्पेस के बाद दूसरा-स्पेस → ". "
+        device.waitForIdle(800)
+        assertEquals("A. ", readFieldText())
+    }
+
+    @Test
+    fun backspaceSwipeDeletesWholeWord() {
+        tapEditText()
+        ensureKeyboardOpen()
+        listOf("a", "b", "c").forEach { tapKey(it) }
+        tapKey("spacebar")
+        device.waitForIdle(600)
+        assertEquals("Abc ", readFieldText())
+        val bs = device.wait(Until.findObject(By.desc("backspace")), 4000)
+        assertNotNull("बैकस्पेस गायब", bs)
+        val b = bs.visibleBounds
+        // बैकस्पेस से बाएँ-घसीटना (कच्चा-स्पर्श device.swipe)
+        device.swipe(b.centerX(), b.centerY(), b.centerX() - device.displayWidth / 4, b.centerY(), 12)
+        device.waitForIdle(1200)
+        // शब्द+स्पेस मिटा → खाली; पुष्टि हेतु नया-अक्षर
+        tapKey("x")
+        device.waitForIdle(600)
+        assertEquals("X", readFieldText())
     }
 }

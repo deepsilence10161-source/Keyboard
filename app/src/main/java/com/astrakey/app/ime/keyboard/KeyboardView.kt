@@ -46,7 +46,9 @@ class KeyboardView(
 
     private var shift = ShiftState.OFF
     private var ctrlMode = false
-    private var langEnglish = prefs.getBoolean("lang_english", true)
+    /** भाषा-मोड: en (क्वर्टी) / translit (हिंग्लिश-सुझाव) / deva (देवनागरी-सीधी-क्वर्टी) — v0.9.0 */
+    private var langMode = prefs.getString("lang_mode", null)
+        ?: if (prefs.getBoolean("lang_english", true)) "en" else "translit"
     private var numberRowOn = prefs.getBoolean("number_row", false)
     private var arrowRowOn = prefs.getBoolean("arrow_row", true)
     private var hapticOn = prefs.getBoolean("haptic", true)
@@ -244,7 +246,7 @@ class KeyboardView(
             Panel.SUGGEST -> {
                 toolbar.addView(tbKey(KeyDef("", action = KeyAction.CLIPBOARD, iconRes = R.drawable.ic_clipboard)))
                 toolbar.addView(tbKey(KeyDef("Ctrl", action = KeyAction.CTRL)))
-                toolbar.addView(tbKey(KeyDef(if (langEnglish) "अ" else "EN", action = KeyAction.LANGUAGE)))
+                toolbar.addView(tbKey(KeyDef(if (langMode == "en") "अ" else if (langMode == "deva") "क" else "EN", action = KeyAction.LANGUAGE)))
                 toolbar.addView(tbKey(KeyDef("", action = KeyAction.EMOJI, iconRes = R.drawable.ic_emoji)))
                 toolbar.addView(tbKey(KeyDef("", action = KeyAction.MIC, iconRes = R.drawable.ic_mic)))
                 toolbar.addView(tbKey(KeyDef("", action = KeyAction.SETTINGS, iconRes = R.drawable.ic_gear)))
@@ -327,10 +329,10 @@ class KeyboardView(
         shiftKeyView = null
         when (panel) {
             Panel.SUGGEST -> {
-                // हिंग्लिश मोड: लेआउट क्वर्टी ही रहता है — सुझाव देवनागरी मिलते हैं
-                val rows = KeyboardLayouts.englishRows(numberRowOn)
+                // भाषा-मोड: deva = देवनागरी-सीधी-क्वर्टी; en/translit = क्वर्टी (translit में सुझाव देवनागरी)
+                val rows = if (langMode == "deva") KeyboardLayouts.hindiRows() else KeyboardLayouts.englishRows(numberRowOn)
                 rows.forEachIndexed { i, def ->
-                    val h = if (numberRowOn && i == 0) m.numRowH else m.rowH
+                    val h = if (numberRowOn && langMode != "deva" && i == 0) m.numRowH else m.rowH
                     rowsBox.addView(buildRow(def, h))
                 }
                 rowsBox.addView(buildBottomRow(m.rowH))
@@ -445,7 +447,7 @@ class KeyboardView(
         return kv
     }
 
-    private fun spaceLabel(): String = if (langEnglish) "English" else "हिंदी"
+    private fun spaceLabel(): String = if (langMode == "en") "English" else "हिंदी"
 
     // ---------- पैनल (इमोजी / क्लिपबोर्ड) ----------
 
@@ -631,12 +633,28 @@ class KeyboardView(
         when (k.action) {
             KeyAction.SHIFT -> { cycleShift(); refreshShiftDisplay() }
             KeyAction.BACKSPACE -> { deleteOne(); updateSuggestions() }
-            KeyAction.SPACE -> { commit(" "); updateSuggestionsAfterSpace() }
+            KeyAction.SPACE -> {
+                // डबल-स्पेस → पूर्णविराम (मानक-IME: अक्षर+स्पेस के बाद दूसरा-स्पेस ". " बनता है)
+                val ic = icProvider()
+                val before2 = ic?.getTextBeforeCursor(2, 0)
+                if (before2 != null && before2.length == 2 && before2[0].isLetterOrDigit() && before2[1] == ' ') {
+                    ic?.deleteSurroundingText(1, 0)
+                    commit(". ")
+                } else {
+                    commit(" ")
+                }
+                updateSuggestionsAfterSpace()
+            }
             KeyAction.ENTER -> { enter() }
             KeyAction.EMOJI_CHAR -> { commit(k.output) }
             KeyAction.CTRL -> toggleCtrl()
             KeyAction.NUMBER_TOGGLE -> { numberRowOn = !numberRowOn; prefs.edit().putBoolean("number_row", numberRowOn).apply(); rebuildRows(metrics()) }
-            KeyAction.LANGUAGE -> { langEnglish = !langEnglish; prefs.edit().putBoolean("lang_english", langEnglish).apply(); rebuildAll() }
+            KeyAction.LANGUAGE -> {
+                // 3-स्थिति-चक्र: en → translit → deva → en
+                langMode = when (langMode) { "en" -> "translit"; "translit" -> "deva"; else -> "en" }
+                prefs.edit().putString("lang_mode", langMode).apply()
+                rebuildAll()
+            }
             KeyAction.SETTINGS -> openSettings()
             KeyAction.CLIPBOARD -> openClip()
             KeyAction.EMOJI -> { panel = Panel.EMOJI; rebuildAll() }
@@ -772,6 +790,34 @@ class KeyboardView(
     /** पूरे कीबोर्ड पर स्पर्श-निरीक्षण — स्वाइप-पथ संग्रहित, टैप बाल-कीज़ तक जाते हैं */
     private fun logD(msg: String) { android.util.Log.d("AstraKeyUI", msg) }
 
+    // ---------- बैकस्पेस-स्वाइप (बाएँ-घसीटने से पूरा-शब्द-मिटाना — SwiftKey-पैटर्न) ----------
+
+    private var bsStart = false
+    private var bsSwiped = false
+    private var bsDownX = 0f
+    private var bsDownY = 0f
+
+    private fun pointInBackspace(x: Float, y: Float): Boolean {
+        val root = IntArray(2); getLocationInWindow(root)
+        for (kv in allKeyViews) if (kv.key.action == KeyAction.BACKSPACE && kv.isShown) {
+            val loc = IntArray(2); kv.getLocationInWindow(loc)
+            val lx = x - (loc[0] - root[0]); val ly = y - (loc[1] - root[1])
+            if (lx >= 0 && lx <= kv.width && ly >= 0 && ly <= kv.height) return true
+        }
+        return false
+    }
+
+    /** कर्सर-पूर्व शब्द (+अनुगामी-स्पेस) मिटाओ */
+    private fun deleteLastWord() {
+        val ic = icProvider() ?: return
+        val before = ic.getTextBeforeCursor(48, 0) ?: return
+        var n = 0
+        while (n < before.length && before[before.length - 1 - n] == ' ') n++
+        while (n < before.length && before[before.length - 1 - n].isLetterOrDigit()) n++
+        if (n > 0) ic.deleteSurroundingText(n, 0)
+        updateSuggestions()
+    }
+
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
         // घसीटने-पट्टी स्पर्श — जेस्चर-संग्रह से पूर्ण-बाहर (पट्टी ऊपर उठती है, स्थानीय-निर्देशांक भ्रमित करते हैं)
         val inBar = floatBar.visibility == VISIBLE && ev.y <= floatBar.bottom + dp(4)
@@ -782,8 +828,34 @@ class KeyboardView(
             gestureCandidate = false
             return super.dispatchTouchEvent(ev)
         }
-        if (!gestureOn || panel != Panel.SUGGEST || !langEnglish) {
-            logD("gSkip on=${gestureOn} panel=$panel en=$langEnglish")
+        // बैकस्पेस-स्वाइप निरीक्षण (भाषा-स्वतंत्र — केवल SUGGEST-पैनल में)
+        if (gestureOn && panel == Panel.SUGGEST) {
+            when (ev.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    bsStart = pointInBackspace(ev.x, ev.y)
+                    bsSwiped = false
+                    bsDownX = ev.x
+                    bsDownY = ev.y
+                }
+                MotionEvent.ACTION_MOVE -> if (bsStart && !bsSwiped &&
+                    ev.x - bsDownX < -dp(60) && kotlin.math.abs(ev.y - bsDownY) < dp(48)) {
+                    deleteLastWord()
+                    bsSwiped = true
+                    allKeyViews.forEach { it.abortTouch() } // रिपीट-टाइमर रक्षा
+                    logD("bsSwipe word-deleted")
+                } else if (bsSwiped) return true
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    bsStart = false
+                    if (bsSwiped) {
+                        gesturePts.clear()
+                        gestureCandidate = false
+                        return true // अक्षर-जेस्चर/टैप-दमन
+                    }
+                }
+            }
+        }
+        if (!gestureOn || panel != Panel.SUGGEST || langMode != "en") {
+            logD("gSkip on=${gestureOn} panel=$panel lm=$langMode")
             return super.dispatchTouchEvent(ev)
         }
         when (ev.actionMasked) {
@@ -924,7 +996,7 @@ class KeyboardView(
         if (panel != Panel.SUGGEST) return
         val w = currentWord()
         lastWordLen = w.length
-        val sug = if (lastWordLen > 0) engine.suggest(w, hindiFirst = !langEnglish).take(3) else emptyList()
+        val sug = if (lastWordLen > 0 && langMode != "deva") engine.suggest(w, hindiFirst = langMode == "translit").take(3) else emptyList()
         val sig = sug.joinToString("|")
         if (sig == lastSuggestionSignature) return
         lastSuggestionSignature = sig
@@ -962,7 +1034,7 @@ class KeyboardView(
         val newName = KeyboardTheme.currentName(prefs)
         if (newName != themeName) { themeName = newName; setBackgroundColor(pal.bg) }
         numberRowOn = prefs.getBoolean("number_row", false)
-        langEnglish = prefs.getBoolean("lang_english", true)
+        langMode = prefs.getString("lang_mode", null) ?: if (prefs.getBoolean("lang_english", true)) "en" else "translit"
         arrowRowOn = prefs.getBoolean("arrow_row", true)
         hapticOn = prefs.getBoolean("haptic", true)
         gestureOn = prefs.getBoolean("gesture_on", true)

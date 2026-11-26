@@ -37,6 +37,7 @@ class ScreenshotTest {
         setPref("number_row", false)
         setStr("ui_mode", "full")
         setStr("theme_name", "dark")
+        setStr("lang_mode", "en")
         ActivityScenario.launch(MainActivity::class.java)
         device.waitForIdle(3000)
     }
@@ -218,11 +219,19 @@ class ScreenshotTest {
         openKb()
         shot("13_sunset_theme.png")
 
+        // 14 — देवनागरी सीधी-क्वर्टी
+        closeKb()
+        setStr("theme_name", "dark")
+        setStr("lang_mode", "deva")
+        openKb()
+        shot("14_devanagari.png")
+
         // बहाली — डार्क + अंग्रेज़ी + पूर्ण-मोड
         closeKb()
         setPref("theme_dark", true)
         setStr("ui_mode", "full")
         setStr("theme_name", "dark")
+        setStr("lang_mode", "en")
         openKb()
         tapKey("language")
         assertNotNull(device.wait(Until.findObject(By.desc("spacebar")), 6000))
