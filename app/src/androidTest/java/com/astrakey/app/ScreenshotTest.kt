@@ -35,6 +35,9 @@ class ScreenshotTest {
         setPref("theme_dark", true)
         setPref("lang_english", true)
         setPref("number_row", false)
+        InstrumentationRegistry.getInstrumentation().targetContext
+            .getSharedPreferences("astrakey_prefs", android.content.Context.MODE_PRIVATE)
+            .edit().putString("theme_name", "dark").commit()
         ActivityScenario.launch(MainActivity::class.java)
         device.waitForIdle(3000)
     }
@@ -145,8 +148,19 @@ class ScreenshotTest {
         // 07 — लाइट थीम
         closeKb()
         setPref("theme_dark", false)
+        InstrumentationRegistry.getInstrumentation().targetContext
+            .getSharedPreferences("astrakey_prefs", android.content.Context.MODE_PRIVATE)
+            .edit().putString("theme_name", "light").commit()
         openKb()
         shot("07_light_home.png")
+
+        // 09 — एमोलेड थीम
+        closeKb()
+        InstrumentationRegistry.getInstrumentation().targetContext
+            .getSharedPreferences("astrakey_prefs", android.content.Context.MODE_PRIVATE)
+            .edit().putString("theme_name", "amoled").commit()
+        openKb()
+        shot("09_amoled_home.png")
 
         // 08 — हिंग्लिश (देवनागरी सुझाव)
         tapKey("language")
@@ -156,6 +170,9 @@ class ScreenshotTest {
         // बहाली — डार्क + अंग्रेज़ी
         closeKb()
         setPref("theme_dark", true)
+        InstrumentationRegistry.getInstrumentation().targetContext
+            .getSharedPreferences("astrakey_prefs", android.content.Context.MODE_PRIVATE)
+            .edit().putString("theme_name", "dark").commit()
         openKb()
         tapKey("language")
         assertNotNull(device.wait(Until.findObject(By.desc("spacebar")), 6000))

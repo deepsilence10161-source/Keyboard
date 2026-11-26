@@ -105,4 +105,7 @@ class SuggestionEngine {
 
     /** ट्रांसलिटरेशन (पूरे शब्द का) — मौजूद नहीं तो null */
     fun transliterate(word: String): String? = translit[word.trim().lowercase()]
+
+    /** जेस्चर-विघटन हेतु शब्दकोश (शब्द → आवृत्ति) */
+    val wordsWithFreq: Map<String, Int> get() = english
 }

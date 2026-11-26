@@ -94,6 +94,7 @@ class KeyView @JvmOverloads constructor(
         KeyAction.SETTINGS -> "settings"
         KeyAction.EMOJI -> "emoji"
         KeyAction.CLIPBOARD -> "clipboard"
+        KeyAction.MIC -> "mic"
         KeyAction.HIDE -> "hide"
         KeyAction.ARROW_UP -> "arrow_up"
         KeyAction.ARROW_DOWN -> "arrow_down"
@@ -207,6 +208,15 @@ class KeyView @JvmOverloads constructor(
         repeatRunnable?.let { handler.removeCallbacks(it) }
         repeatRunnable = null
         onKeyRepeatStop?.invoke(key)
+    }
+
+    /** जेस्चर-मोड में स्पर्श-समाप्ति — टैप/लंबा-दबाव दमन, टाइमर-सफ़ाई (बैकस्पेस-रिपीट रक्षा) */
+    fun abortTouch() {
+        longFired = true
+        isPressed = false
+        cancelAlt()
+        repeatRunnable?.let { handler.removeCallbacks(it) }
+        repeatRunnable = null
     }
 
     /** Ctrl-मोड हाइलाइट (Samsung स्टाइल) */

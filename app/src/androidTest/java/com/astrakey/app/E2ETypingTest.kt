@@ -329,14 +329,14 @@ class E2ETypingTest {
     }
 
     @Test
-    fun themeToggleFromSettingsAppliesAndTypingSurvives() {
+    fun themeSwitchFromSettingsAppliesAndTypingSurvives() {
         tapEditText()
         ensureKeyboardOpen()
         device.pressBack()
         Thread.sleep(400)
-        val sw = device.wait(Until.findObject(By.res("com.astrakey.app", "switchTheme")), 5000)
-        assertNotNull("सेटिंग्स-स्विच नहीं मिला", sw)
-        sw.click()
+        val radio = device.wait(Until.findObject(By.res("com.astrakey.app", "radioAmoled")), 5000)
+        assertNotNull("एमोलेड-रेडियो नहीं मिला", radio)
+        radio.click()
         Thread.sleep(300)
         tapEditText()
         ensureKeyboardOpen()
@@ -346,11 +346,63 @@ class E2ETypingTest {
         // बहाली — डार्क (prefs से; अगली IME-खुलने पर लागू)
         androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
             .getSharedPreferences("astrakey_prefs", android.content.Context.MODE_PRIVATE)
-            .edit().putBoolean("theme_dark", true).commit()
+            .edit().putString("theme_name", "dark").commit()
         device.pressBack()
         Thread.sleep(300)
         tapEditText()
         ensureKeyboardOpen()
+    }
+
+    @Test
+    fun micLaunchesRecognizerAndKeyboardSurvives() {
+        tapEditText()
+        ensureKeyboardOpen()
+        tapKey("mic")
+        Thread.sleep(2500) // पहचानकर्ता खुले (या अनुपलब्ध-टोस्ट)
+        device.pressBack()
+        Thread.sleep(400)
+        // कीबोर्ड बचा हुआ और टाइपिंग चालू
+        tapKey("a")
+        device.waitForIdle(600)
+        assertEquals("A", readFieldText())
+    }
+
+    @Test
+    fun gestureSwipeCommitsDictionaryWord() {
+        tapEditText()
+        ensureKeyboardOpen()
+        // मानक की-केंद्र (uiautomator से) — t → y → p → e पथ
+        val centers = mutableMapOf<String, Pair<Int, Int>>()
+        for (k in listOf("t", "y", "p", "e")) {
+            val o = device.wait(Until.findObject(By.desc(k)), 4000)
+            assertNotNull("की गायब: $k", o)
+            val b = o.visibleBounds
+            centers[k] = (b.centerX) to (b.centerY)
+        }
+        val instr = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation()
+        // कस्टम-पथ इंजेक्शन: DOWN → वेपॉइंट → UP (एक ही स्वाइप)
+        val seq = listOf("t", "y", "p", "e")
+        val step = 12
+        val (sx, sy) = centers[seq.first()]!!
+        instr.sendPointerSync(android.view.MotionEvent.obtain(0, System.currentTimeMillis(),
+            android.view.MotionEvent.ACTION_DOWN, sx.toFloat(), sy.toFloat(), 0))
+        for (i in 0 until seq.size - 1) {
+            val (x1, y1) = centers[seq[i]]!!
+            val (x2, y2) = centers[seq[i + 1]]!!
+            for (s in 1..step) {
+                val xx = x1 + (x2 - x1) * s / step
+                val yy = y1 + (y2 - y1) * s / step
+                instr.sendPointerSync(android.view.MotionEvent.obtain(0, System.currentTimeMillis(),
+                    android.view.MotionEvent.ACTION_MOVE, xx.toFloat(), yy.toFloat(), 0))
+                Thread.sleep(10)
+            }
+        }
+        Thread.sleep(80)
+        val (ex, ey) = centers[seq.last()]!!
+        instr.sendPointerSync(android.view.MotionEvent.obtain(0, System.currentTimeMillis(),
+            android.view.MotionEvent.ACTION_UP, ex.toFloat(), ey.toFloat(), 0))
+        device.waitForIdle(1200)
+        assertEquals("type", readFieldText())
     }
 
     @Test

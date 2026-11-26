@@ -35,9 +35,25 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        bindSwitch(R.id.switchTheme, "theme_dark", true)
         bindSwitch(R.id.switchArrows, "arrow_row", true)
         bindSwitch(R.id.switchHaptic, "haptic", true)
+        bindSwitch(R.id.switchGesture, "gesture_on", true)
+
+        val prefs = getSharedPreferences("astrakey_prefs", MODE_PRIVATE)
+        val current = prefs.getString("theme_name", null)
+            ?: if (prefs.getBoolean("theme_dark", true)) "dark" else "light"
+        val radioIds = mapOf(
+            "dark" to R.id.radioDark,
+            "light" to R.id.radioLight,
+            "amoled" to R.id.radioAmoled,
+            "ocean" to R.id.radioOcean
+        )
+        (radioIds[current] ?: R.id.radioDark).let { findViewById<android.widget.RadioButton>(it).isChecked = true }
+        radioIds.forEach { (name, id) ->
+            findViewById<android.widget.RadioButton>(id).setOnCheckedChangeListener { _, checked ->
+                if (checked) prefs.edit().putString("theme_name", name).apply()
+            }
+        }
     }
 
     /** कीबोर्ड-सेटिंग स्विच — prefs में सुरक्षित, IME अगली खुलने पर लागू करता है */

@@ -1,15 +1,18 @@
 package com.astrakey.app.ime.keyboard
 
 import android.content.Context
+import android.content.IntentFilter
 import android.graphics.Typeface
 import android.os.Build
 import android.util.TypedValue
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.astrakey.app.R
@@ -46,20 +49,31 @@ class KeyboardView(
     private var numberRowOn = prefs.getBoolean("number_row", false)
     private var arrowRowOn = prefs.getBoolean("arrow_row", true)
     private var hapticOn = prefs.getBoolean("haptic", true)
-    private var themeMode = KeyboardTheme.currentMode(prefs)
+    private var gestureOn = prefs.getBoolean("gesture_on", true)
+    private var themeName = KeyboardTheme.currentName(prefs)
     private var panel = Panel.SUGGEST
     private var lastWordLen = 0
     private var suggestionSlots: MutableList<TextView> = mutableListOf()
     private var hintSlot: TextView? = null
     private var lastSuggestionSignature: String? = null
     private val letterKeyViews: MutableList<KeyView> = mutableListOf()
+    private val allKeyViews: MutableList<KeyView> = mutableListOf()
     private var shiftKeyView: KeyView? = null
+    private var gesturePts: MutableList<Pair<Float, Float>> = mutableListOf()
+    private var gestureCandidate = false
+    private var gestureStartAt = 0L
+    private val voiceReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(ctx: Context?, intent: android.content.Intent?) {
+            val text = intent?.getStringExtra(com.astrakey.app.VoiceInputActivity.EXTRA_TEXT) ?: return
+            if (text.isNotBlank()) { commit(text + " "); updateSuggestions() }
+        }
+    }
 
     private val toolbar = LinearLayout(context)
     private val strip = LinearLayout(context)
     private val rowsBox = LinearLayout(context)
 
-    private val pal get() = KeyboardTheme.palette(themeMode)
+    private val pal get() = KeyboardTheme.palette(themeName)
 
     init {
         orientation = VERTICAL
@@ -75,7 +89,17 @@ class KeyboardView(
         addView(toolbar)
         addView(strip)
         addView(rowsBox)
+        ContextCompat.registerReceiver(
+            context.applicationContext, voiceReceiver,
+            IntentFilter(com.astrakey.app.VoiceInputActivity.ACTION_RESULT),
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
         rebuildAll()
+    }
+
+    override fun onDetachedFromWindow() {
+        try { context.applicationContext.unregisterReceiver(voiceReceiver) } catch (_: Exception) {}
+        super.onDetachedFromWindow()
     }
 
     // ---------- मापन (स्क्रीन-अनुपात — SwiftKey जैसा अनुकूलन) ----------
@@ -157,6 +181,7 @@ class KeyboardView(
                 toolbar.addView(tbKey(KeyDef("123", action = KeyAction.NUMBER_TOGGLE)))
                 toolbar.addView(tbKey(KeyDef(if (langEnglish) "अ" else "EN", action = KeyAction.LANGUAGE)))
                 toolbar.addView(tbKey(KeyDef("", action = KeyAction.EMOJI, iconRes = R.drawable.ic_emoji)))
+                toolbar.addView(tbKey(KeyDef("", action = KeyAction.MIC, iconRes = R.drawable.ic_mic)))
                 toolbar.addView(tbKey(KeyDef("", action = KeyAction.SETTINGS, iconRes = R.drawable.ic_gear)))
             }
             Panel.EMOJI, Panel.CLIP -> {
@@ -191,6 +216,7 @@ class KeyboardView(
         kv.setKeyTextSizePx(dpf(15f))
         kv.bind(def)
         kv.hapticEnabled = hapticOn
+        allKeyViews.add(kv)
         if (def.action == KeyAction.CTRL && ctrlMode) kv.setCtrlHighlight(true, pal.accent)
         kv.onKeyTap = { k -> handleKey(k) }
         return kv
@@ -227,6 +253,7 @@ class KeyboardView(
     private fun rebuildRows(m: Metrics) {
         rowsBox.removeAllViews()
         letterKeyViews.clear()
+        allKeyViews.clear()
         shiftKeyView = null
         when (panel) {
             Panel.SUGGEST -> {
@@ -295,6 +322,7 @@ class KeyboardView(
         kv.applyGhost(pal.pressedFill, dpf(pal.keyRadiusDp), pal.secondaryText, pal.secondaryText)
         kv.bind(def)
         kv.hapticEnabled = hapticOn
+        allKeyViews.add(kv)
         kv.onKeyTap = { k -> handleKey(k) }
         return kv
     }
@@ -320,6 +348,7 @@ class KeyboardView(
         }
         kv.bind(def)
         kv.hapticEnabled = hapticOn
+        allKeyViews.add(kv)
         // शिफ्ट-डिस्प्ले in-place अपडेट के लिए पंजीकरण
         if (def.action == KeyAction.SHIFT) shiftKeyView = kv
         if (def.action == null && def.label.length == 1) letterKeyViews.add(kv)
@@ -465,6 +494,7 @@ class KeyboardView(
             KeyAction.SETTINGS -> openSettings()
             KeyAction.CLIPBOARD -> openClip()
             KeyAction.EMOJI -> { panel = Panel.EMOJI; rebuildAll() }
+            KeyAction.MIC -> startVoice()
             KeyAction.HIDE -> hideRequester()
             KeyAction.ARROW_UP -> commands.moveCursorVertical(icProvider(), true)
             KeyAction.ARROW_DOWN -> commands.moveCursorVertical(icProvider(), false)
@@ -581,8 +611,132 @@ class KeyboardView(
         } catch (_: Exception) {}
     }
 
-    private fun toast(c: Context, msg: String) {
-        android.widget.Toast.makeText(c.applicationContext, msg, android.widget.Toast.LENGTH_SHORT).show()
+    private fun startVoice() {
+        try {
+            val i = android.content.Intent(context, com.astrakey.app.VoiceInputActivity::class.java)
+            i.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_NO_HISTORY)
+            context.startActivity(i)
+        } catch (_: Exception) { toast(context, "वाक्-पहचान आरंभ विफल") }
+    }
+
+    // ---------- जेस्चर-टाइपिंग (स्वाइप → शब्द) ----------
+
+    /** पूरे कीबोर्ड पर स्पर्श-निरीक्षण — स्वाइप-पथ संग्रहित, टैप बाल-कीज़ तक जाते हैं */
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        if (!gestureOn || panel != Panel.SUGGEST || !langEnglish) {
+            return super.dispatchTouchEvent(ev)
+        }
+        when (ev.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                gesturePts.clear()
+                gesturePts.add(ev.x to ev.y)
+                gestureCandidate = false
+                gestureStartAt = System.currentTimeMillis()
+            }
+            MotionEvent.ACTION_MOVE -> {
+                if (!gestureCandidate) {
+                    val last = gesturePts.last()
+                    val d = kotlin.math.hypot((ev.x - last.first).toDouble(), (ev.y - last.second).toDouble())
+                    if (d > 4) gesturePts.add(ev.x to ev.y)
+                    if (gesturePts.size >= 2 && pathLength(gesturePts) > dp(70)) {
+                        gestureCandidate = true
+                        allKeyViews.forEach { it.abortTouch() } // बैकस्पेस-रिपीट/अल्ट-टाइमर रक्षा
+                    }
+                }
+                if (gestureCandidate) return true // बाल-कीज़ तक घटना नहीं जाए
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                if (gestureCandidate) {
+                    val dur = System.currentTimeMillis() - gestureStartAt
+                    val pts = gesturePts.toList()
+                    gesturePts.clear()
+                    gestureCandidate = false
+                    if (dur >= 150 && pts.size >= 6) {
+                        val word = decodeGesture(pts)
+                        if (word != null) { commit(word); updateSuggestions() }
+                    }
+                    return true // टैप-दमन (की-टैप दोहराव न हो)
+                }
+                gesturePts.clear()
+            }
+        }
+        return super.dispatchTouchEvent(ev)
+    }
+
+    private fun pathLength(pts: List<Pair<Float, Float>>): Float {
+        var l = 0f
+        for (i in 1 until pts.size) {
+            val a = pts[i - 1]; val b = pts[i]
+            l += kotlin.math.hypot((b.first - a.first).toDouble(), (b.second - a.second).toDouble()).toFloat()
+        }
+        return l
+    }
+
+    /** स्वाइप-पथ को शब्दकोश-पथों से मिलाओ (रीसैंपल + औसत-दूरी) */
+    private fun decodeGesture(pts: List<Pair<Float, Float>>): String? {
+        val centers = letterCenters() ?: return null
+        val swipe = resample(pts, 16)
+        val first = pts.first(); val last = pts.last()
+        var best: String? = null
+        var bestScore = Float.MAX_VALUE
+        for ((word, freq) in engine.wordsWithFreq) {
+            if (word.length < 3 || word.length > 10) continue
+            val w0 = centers[word[0]] ?: continue
+            val w1 = centers[word[word.length - 1]] ?: continue
+            if (kotlin.math.hypot((first.first - w0.first).toDouble(), (first.second - w0.second).toDouble()) > dp(46)) continue
+            if (kotlin.math.hypot((last.first - w1.first).toDouble(), (last.second - w1.second).toDouble()) > dp(46)) continue
+            val poly = mutableListOf<Pair<Float, Float>>()
+            word.forEach { c -> centers[c]?.let { poly.add(it) } }
+            if (poly.size < word.length) continue
+            val rp = resample(poly, 16)
+            var sum = 0f
+            for (i in 0 until 16) {
+                sum += kotlin.math.hypot(
+                    (swipe[i].first - rp[i].first).toDouble(),
+                    (swipe[i].second - rp[i].second).toDouble()
+                ).toFloat()
+            }
+            val score = sum / 16f - freq * 0.02f // आवृत्ति-सहायता
+            if (score < bestScore) { bestScore = score; best = word }
+        }
+        return if (bestScore < dp(26)) best else null
+    }
+
+    /** अक्षर-की केंद्र (इस-व्यू निर्देशांक) */
+    private fun letterCenters(): Map<Char, Pair<Float, Float>>? {
+        val root = IntArray(2); getLocationInWindow(root)
+        val map = mutableMapOf<Char, Pair<Float, Float>>()
+        for (kv in allKeyViews) {
+            if (kv.key.action != null || kv.key.label.length != 1) continue
+            if (!kv.isShown) continue
+            val loc = IntArray(2); kv.getLocationInWindow(loc)
+            val k = kv.key.label.lowercase()[0]
+            if (!map.containsKey(k)) map[k] = ((loc[0] + kv.width / 2f) to (loc[1] + kv.height / 2f - root[1]))
+        }
+        return if (map.size >= 26) map else null
+    }
+
+    private fun resample(pts: List<Pair<Float, Float>>, n: Int): List<Pair<Float, Float>> {
+        if (pts.size < 2) return pts
+        val lens = FloatArray(pts.size)
+        var total = 0f
+        for (i in 1 until pts.size) {
+            val a = pts[i - 1]; val b = pts[i]
+            total += kotlin.math.hypot((b.first - a.first).toDouble(), (b.second - a.second).toDouble()).toFloat()
+            lens[i] = total
+        }
+        if (total <= 0f) return List(n) { pts[0] }
+        val out = mutableListOf<Pair<Float, Float>>()
+        var j = 0
+        for (i in 0 until n) {
+            val t = total * i / (n - 1)
+            while (j < pts.size - 2 && lens[j + 1] < t) j++
+            val seg = (lens[j + 1] - lens[j]).takeIf { it > 0f } ?: 1f
+            val f = (t - lens[j]) / seg
+            val a = pts[j]; val b = pts[j + 1]
+            out.add((a.first + (b.first - a.first) * f) to (a.second + (b.second - a.second) * f))
+        }
+        return out
     }
 
     // ---------- सजेशन ----------
@@ -637,12 +791,13 @@ class KeyboardView(
 
     /** IME से: इनपुट शुरू — थीम-ताज़ा + ऑटो-कैपिटलाइज़ + सजेशन ताज़ा */
     fun onInputStarted() {
-        val newMode = KeyboardTheme.currentMode(prefs)
-        if (newMode != themeMode) { themeMode = newMode; setBackgroundColor(pal.bg) }
+        val newName = KeyboardTheme.currentName(prefs)
+        if (newName != themeName) { themeName = newName; setBackgroundColor(pal.bg) }
         numberRowOn = prefs.getBoolean("number_row", false)
         langEnglish = prefs.getBoolean("lang_english", true)
         arrowRowOn = prefs.getBoolean("arrow_row", true)
         hapticOn = prefs.getBoolean("haptic", true)
+        gestureOn = prefs.getBoolean("gesture_on", true)
         panel = Panel.SUGGEST
         lastWordLen = 0
         val info = editorInfoProvider()
