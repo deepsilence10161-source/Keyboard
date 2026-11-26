@@ -854,6 +854,7 @@ class KeyboardView(
     private var padLastX = 0f
     private var padAccum = 0f
     private var padToggledAt = 0L
+    private var padSwipeDist = 0f
 
     private fun pointInSpacebar(x: Float, y: Float): Boolean {
         val root = IntArray(2); getLocationInWindow(root)
@@ -871,7 +872,7 @@ class KeyboardView(
         rebuildAll()
     }
 
-    /** कर्सर-पैड: स्पेसबार पर घसीटना → dpad-कर्सर-गति (प्रति dp(22) एक-कदम) */
+    /** कर्सर-पैड: स्पेसबार पर घसीटना → dpad-कर्सर-गति (प्रति dp(22) एक-कदम); छोटा-स्पर्श = पैड-बंद */
     private fun padTouch(ev: MotionEvent): Boolean {
         when (ev.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
@@ -879,11 +880,14 @@ class KeyboardView(
                 padDrag = true
                 padLastX = ev.x
                 padAccum = 0f
+                padSwipeDist = 0f
                 allKeyViews.forEach { if (it.key.action == KeyAction.SPACE) it.abortTouch() }
                 return true
             }
             MotionEvent.ACTION_MOVE -> if (padDrag) {
-                padAccum += ev.x - padLastX
+                val dx = ev.x - padLastX
+                padAccum += dx
+                padSwipeDist += kotlin.math.abs(dx)
                 padLastX = ev.x
                 val step = dp(22)
                 while (padAccum >= step) {
@@ -898,6 +902,12 @@ class KeyboardView(
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> if (padDrag) {
                 padDrag = false
+                // छोटा-स्पर्श (घसीटना-नहीं) = पैड-बंद-टैप — स्थायी-अटका-जाल-रक्षा
+                if (padSwipeDist < dp(8)) {
+                    cursorPad = false
+                    padToggledAt = System.currentTimeMillis()
+                    rebuildAll()
+                }
                 return true
             }
         }
