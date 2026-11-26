@@ -1,8 +1,9 @@
 package com.astrakey.app
 
-import android.content.ClipData
-import android.content.ClipboardManager
+import android.content.ContentValues
 import android.content.Context
+import android.os.Build
+import android.provider.MediaStore
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -10,15 +11,17 @@ import androidx.test.uiautomator.By
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.Until
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
 
 /**
- * स्वचालित विज़ुअल-परीक्षण — हर UI-स्थिति का स्क्रीनशॉट लेता है;
- * CI इन्हें artifact बनाता है और एजेंट स्वयं देखकर सत्यापित करता है।
- * उपयोगकर्ता-निर्देश: "तुम स्वयं परीक्षण करो" — मैनुअल-परीक्षण शून्य।
+ * स्वचालित विज़ुअल-परीक्षण — हर UI-स्थिति का स्क्रीनशॉट लेता है।
+ * सहेजना: (1) ऐप-cache (क्षणिक) + (2) MediaStore Download/AstraKey —
+ * क्योंकि Gradle परीक्षण-अंत में ऐप-अनइंस्टॉल से /Android/data मिट जाता है।
+ * CI: adb pull /sdcard/Download/AstraKey → artifact → एजेंट स्वयं देखकर सत्यापित करता है।
  */
 @RunWith(AndroidJUnit4::class)
 class ScreenshotTest {
@@ -33,13 +36,32 @@ class ScreenshotTest {
     }
 
     private fun shotDir(): File = File(
-        InstrumentationRegistry.getInstrumentation().targetContext.getExternalFilesDir(null),
+        InstrumentationRegistry.getInstrumentation().targetContext.cacheDir,
         "screenshots"
     ).apply { mkdirs() }
 
     private fun shot(name: String) {
         device.waitForIdle(500)
-        device.takeScreenshot(File(shotDir(), name), 1.0f, 90)
+        val f = File(shotDir(), name)
+        val ok = device.takeScreenshot(f, 1.0f, 90)
+        assertTrue("स्क्रीनशॉट विफल: $name", ok && f.exists() && f.length() > 0)
+        copyToGallery(f, name)
+    }
+
+    /** MediaStore Download/AstraKey — अनइंस्टॉल-प्रतिरोधी (API 29+) */
+    private fun copyToGallery(src: File, name: String) {
+        if (Build.VERSION.SDK_INT < 29) return
+        val ctx = InstrumentationRegistry.getInstrumentation().targetContext
+        val values = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, name)
+            put(MediaStore.MediaColumns.MIME_TYPE, "image/png")
+            put(MediaStore.MediaColumns.RELATIVE_PATH, "Download/AstraKey")
+        }
+        val uri = ctx.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+            ?: throw AssertionError("MediaStore-सम्मिलन विफल: $name")
+        ctx.contentResolver.openOutputStream(uri)?.use { os ->
+            src.inputStream().use { it.copyTo(os) }
+        } ?: throw AssertionError("आउटपुट-स्ट्रीम विफल: $name")
     }
 
     private fun tapKey(desc: String) {
@@ -106,8 +128,8 @@ class ScreenshotTest {
 
         // 05 — क्लिपबोर्ड पैनल
         val cm = InstrumentationRegistry.getInstrumentation().targetContext
-            .getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        cm.setPrimaryClip(ClipData.newPlainText("test", "AstraKey क्लिपबोर्ड-परीक्षण पाठ"))
+            .getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+        cm.setPrimaryClip(android.content.ClipData.newPlainText("test", "AstraKey क्लिपबोर्ड-परीक्षण पाठ"))
         tapKey("clipboard")
         shot("05_clip_panel.png")
         tapKey("back")

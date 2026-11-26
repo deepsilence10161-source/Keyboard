@@ -58,7 +58,7 @@ jobs:
 
             # स्क्रीनशॉट-निकासी (एजेंट विज़ुअल-सत्यापन हेतु)
             mkdir -p ci-screenshots
-            adb pull /storage/emulated/0/Android/data/com.astrakey.app/files/screenshots ci-screenshots/ || echo "no screenshots"
+            adb pull /sdcard/Download/AstraKey ci-screenshots/ || echo "no screenshots"
             ls -la ci-screenshots || true
 
       - name: APK artifact अपलोड
