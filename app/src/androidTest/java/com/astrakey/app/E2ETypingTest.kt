@@ -25,6 +25,10 @@ class E2ETypingTest {
     @Before
     fun setup() {
         device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+        // स्थिति-मोड-आधार — परीक्षण-क्रम के रिसाव से स्वतंत्र
+        androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
+            .getSharedPreferences("astrakey_prefs", android.content.Context.MODE_PRIVATE)
+            .edit().putString("ui_mode", "full").putInt("float_top", 0).putInt("float_tx", 0).commit()
         ActivityScenario.launch(MainActivity::class.java)
         device.waitForIdle(3000)
     }

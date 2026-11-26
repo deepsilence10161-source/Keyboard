@@ -93,6 +93,26 @@ class AstraKeyIME : InputMethodService() {
         val sw = resources.displayMetrics.widthPixels
         val maxTop = (resources.displayMetrics.heightPixels * 0.28f).toInt()
         val narrow = uiMode != "full"
+        // Gboard-पैटर्न: फ्लोट में विंडो पूर्ण-ऊँचाई — घसीटने की जगह ऊपर मिलती है;
+        // छू-क्षेत्र onComputeInsets से कीबोर्ड-सीमित रहता है, ऐप-विंडो contentTopInsets से सही सिकुड़ती है
+        try {
+            if (narrow) {
+                setWindowLayoutMode(
+                    android.view.WindowManager.LayoutParams.MATCH_PARENT,
+                    android.view.WindowManager.LayoutParams.MATCH_PARENT
+                )
+            } else {
+                setWindowLayoutMode(
+                    android.view.WindowManager.LayoutParams.MATCH_PARENT,
+                    android.view.WindowManager.LayoutParams.WRAP_CONTENT
+                )
+            }
+        } catch (_: Exception) {}
+        val hlp = h.layoutParams
+        if (hlp != null) {
+            hlp.height = if (narrow) ViewGroup.LayoutParams.MATCH_PARENT else ViewGroup.LayoutParams.WRAP_CONTENT
+            h.layoutParams = hlp
+        }
         val lp = FrameLayout.LayoutParams(
             if (narrow) (sw * 0.78f).toInt() else ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
