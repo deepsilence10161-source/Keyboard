@@ -210,9 +210,21 @@ class E2ETypingTest {
         tapEditText()
         ensureKeyboardOpen()
 
-        // aअ टॉगल → हिंग्लिश (हिंदी-प्राथमिक सुझाव) मोड
-        tapKey("language")
-        device.waitForIdle(600)
+        // आधार-सफ़ाई — क्षेत्र खाली (पिछले-परीक्षण-रिसाव-रक्षा)
+        repeat(2) { tapKey("Ctrl"); tapKey("a"); tapKey("backspace") }
+        device.waitForIdle(400)
+
+        // भाषा-मोड = translit — 'language'-की लेबल "EN" होने तक (स्थिति-रिसाव-रक्षा)
+        var tries = 0
+        while (tries < 4) {
+            val l0 = device.wait(Until.findObject(By.desc("language")), 3000)
+            if (l0 != null && l0.text == "EN") break
+            l0?.click()
+            tries++
+            device.waitForIdle(700)
+        }
+        val l1 = device.wait(Until.findObject(By.desc("language")), 3000)
+        org.junit.Assert.assertEquals("भाषा-मोड translit नहीं हुआ", "EN", l1?.text)
 
         // "namaste" टाइप (क्वर्टी ही)
         listOf("n", "a", "m", "a", "s", "t", "e").forEach { tapKey(it) }
@@ -228,10 +240,15 @@ class E2ETypingTest {
         device.waitForIdle(800)
         assertEquals("नमस्ते ", readFieldText())
 
-        // स्थिति-बहाली — अंग्रेज़ी मोड (आगामी परीक्षणों के लिए शुद्ध आधार) — 3-चक्र: translit→deva→en
-        tapKey("language")
-        tapKey("language")
-        device.waitForIdle(400)
+        // स्थिति-बहाली — अंग्रेज़ी मोड (लेबल "अ" होने तक — स्थिति-रिसाव-रक्षा)
+        var rtries = 0
+        while (rtries < 4) {
+            val r0 = device.wait(Until.findObject(By.desc("language")), 3000)
+            if (r0 != null && r0.text == "अ") break
+            r0?.click()
+            rtries++
+            device.waitForIdle(700)
+        }
     }
 
     @Test
