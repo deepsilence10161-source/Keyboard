@@ -380,27 +380,30 @@ class E2ETypingTest {
             centers[k] = b.centerX() to b.centerY()
         }
         val instr = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation()
-        // कस्टम-पथ इंजेक्शन: DOWN → वेपॉइंट → UP (एक ही स्वाइप)
+        // UiAutomation-इंजेक्शन (IME-विंडो पर sendPointerSync अवरुद्ध होता है)
+        val auto = instr.uiAutomation
         val seq = listOf("t", "y", "p", "e")
         val step = 12
+        val t0 = android.os.SystemClock.uptimeMillis()
+        fun mk(action: Int, x: Int, y: Int, dt: Long): android.view.MotionEvent =
+            android.view.MotionEvent.obtain(t0, t0 + dt, action, x.toFloat(), y.toFloat(), 0)
         val (sx, sy) = centers[seq.first()]!!
-        instr.sendPointerSync(android.view.MotionEvent.obtain(0, System.currentTimeMillis(),
-            android.view.MotionEvent.ACTION_DOWN, sx.toFloat(), sy.toFloat(), 0))
+        auto.injectInputEvent(mk(android.view.MotionEvent.ACTION_DOWN, sx, sy, 0), true)
+        var dt = 0L
         for (i in 0 until seq.size - 1) {
             val (x1, y1) = centers[seq[i]]!!
             val (x2, y2) = centers[seq[i + 1]]!!
             for (s in 1..step) {
                 val xx = x1 + (x2 - x1) * s / step
                 val yy = y1 + (y2 - y1) * s / step
-                instr.sendPointerSync(android.view.MotionEvent.obtain(0, System.currentTimeMillis(),
-                    android.view.MotionEvent.ACTION_MOVE, xx.toFloat(), yy.toFloat(), 0))
-                Thread.sleep(10)
+                dt += 16
+                auto.injectInputEvent(mk(android.view.MotionEvent.ACTION_MOVE, xx, yy, dt), true)
+                Thread.sleep(16)
             }
         }
-        Thread.sleep(80)
+        dt += 80
         val (ex, ey) = centers[seq.last()]!!
-        instr.sendPointerSync(android.view.MotionEvent.obtain(0, System.currentTimeMillis(),
-            android.view.MotionEvent.ACTION_UP, ex.toFloat(), ey.toFloat(), 0))
+        auto.injectInputEvent(mk(android.view.MotionEvent.ACTION_UP, ex, ey, dt), true)
         device.waitForIdle(1200)
         assertEquals("type", readFieldText())
     }

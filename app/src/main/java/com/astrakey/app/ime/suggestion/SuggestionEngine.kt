@@ -23,7 +23,7 @@ class SuggestionEngine {
             "people" to 32,"into" to 31,"year" to 30,"your" to 29,"good" to 28,"some" to 27,
             "could" to 26,"them" to 25,"see" to 24,"other" to 23,"than" to 22,"then" to 21,
             "now" to 20,"look" to 19,"only" to 18,"come" to 17,"its" to 16,"over" to 15,
-            "think" to 14,"also" to 13,"back" to 12,"after" to 11,"use" to 10,"two" to 9,
+            "think" to 14,"type" to 45,"typing" to 30,"also" to 13,"back" to 12,"after" to 11,"use" to 10,"two" to 9,
             "how" to 8,"our" to 7,"work" to 6,"first" to 5,"well" to 5,"way" to 5,"even" to 4,
             "new" to 4,"want" to 4,"because" to 4,"any" to 4,"these" to 4,"give" to 4,
             "day" to 4,"most" to 4,"us" to 3,"hello" to 90,"thanks" to 85,"thank" to 84,
