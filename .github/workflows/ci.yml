@@ -57,7 +57,13 @@ jobs:
             # ऐप-प्रक्रिया वार्म-अप (पहली IME-खुलने की रेस घटाने हेतु)
             adb shell am start -n com.astrakey.app/.MainActivity || true
             sleep 2
-            ./gradlew connectedDebugAndroidTest --stacktrace
+            ./gradlew connectedDebugAndroidTest --stacktrace || {
+              echo "=== विफलता-निदान: UI-स्थिति + AstraKey-लॉग ==="
+              adb shell uiautomator dump /sdcard/ui.xml || true
+              adb shell cat /sdcard/ui.xml || true | head -c 3000 || true
+              adb shell logcat -d | grep -E "AndroidRuntime|AstraKey|FATAL" | tail -60 || true
+              exit 1
+            }
 
             # स्क्रीनशॉट-निकासी (एजेंट विज़ुअल-सत्यापन हेतु)
             mkdir -p ci-screenshots

@@ -44,7 +44,7 @@ class E2ETypingTest {
         org.junit.Assert.fail("की नहीं मिली: $desc")
     }
 
-    /** StaleObject सुरक्षा-जाल के साथ EditText पर टैप */
+    /** StaleObject सुरक्षा-जाल के साथ EditText पर टैप — न मिले तो स्क्रॉल-पुनःप्रयास (छोटी-स्क्रीन CI) */
     private fun tapEditText() {
         var attempts = 0
         while (attempts < 6) {
@@ -55,9 +55,26 @@ class E2ETypingTest {
             } catch (e: androidx.test.uiautomator.StaleObjectException) {
                 Thread.sleep(300)
             }
+            // नीचे-धकेला क्षेत्र — स्क्रॉल करके दोबारा
+            device.swipe(device.displayWidth / 2, device.displayHeight * 3 / 4,
+                device.displayWidth / 2, device.displayHeight / 4, 10)
+            device.waitForIdle(400)
         }
         org.junit.Assert.fail("EditText पर टैप नहीं हो सका")
     }
+
+    /** MainActivity पर दिया-गया res-id ढूँढो — गया तो स्क्रॉल करके (छोटी-स्क्रीन CI) */
+    private fun scrollUntil(resId: String, maxSwipes: Int = 5): androidx.test.uiautomator.UiObject2? {
+        for (i in 0..maxSwipes) {
+            val o = device.wait(Until.findObject(By.res("com.astrakey.app", resId)), 1500)
+            if (o != null) return o
+            device.swipe(device.displayWidth / 2, device.displayHeight * 3 / 4,
+                device.displayWidth / 2, device.displayHeight / 4, 10)
+            device.waitForIdle(400)
+        }
+        return device.wait(Until.findObject(By.res("com.astrakey.app", resId)), 1500)
+    }
+
 
     /**
      * कीबोर्ड-खुलने की पक्की पुष्टि — पहली IME-खुलने की रेस का बचाव:
@@ -334,9 +351,9 @@ class E2ETypingTest {
         ensureKeyboardOpen()
         device.pressBack()
         Thread.sleep(400)
-        val radio = device.wait(Until.findObject(By.res("com.astrakey.app", "radioAmoled")), 5000)
+        val radio = scrollUntil("radioAmoled")
         assertNotNull("एमोलेड-रेडियो नहीं मिला", radio)
-        radio.click()
+        radio?.click()
         Thread.sleep(300)
         tapEditText()
         ensureKeyboardOpen()
@@ -463,9 +480,9 @@ class E2ETypingTest {
         ensureKeyboardOpen()
         device.pressBack()
         Thread.sleep(400)
-        val radio = device.wait(Until.findObject(By.res("com.astrakey.app", "radioModeLeft")), 5000)
+        val radio = scrollUntil("radioModeLeft")
         assertNotNull("एक-हाथ-बाएँ-रेडियो नहीं मिला", radio)
-        radio.click()
+        radio?.click()
         Thread.sleep(300)
         tapEditText()
         ensureKeyboardOpen()
@@ -496,9 +513,9 @@ class E2ETypingTest {
         ensureKeyboardOpen()
         device.pressBack()
         Thread.sleep(400)
-        val radio = device.wait(Until.findObject(By.res("com.astrakey.app", "radioModeFloat")), 5000)
+        val radio = scrollUntil("radioModeFloat")
         assertNotNull("फ्लोटिंग-रेडियो नहीं मिला", radio)
-        radio.click()
+        radio?.click()
         Thread.sleep(300)
         tapEditText()
         ensureKeyboardOpen()
@@ -536,9 +553,9 @@ class E2ETypingTest {
         ensureKeyboardOpen()
         device.pressBack()
         Thread.sleep(400)
-        val radio = device.wait(Until.findObject(By.res("com.astrakey.app", "radioSunset")), 5000)
+        val radio = scrollUntil("radioSunset")
         assertNotNull("सूर्यास्त-रेडियो नहीं मिला", radio)
-        radio.click()
+        radio?.click()
         Thread.sleep(300)
         tapEditText()
         ensureKeyboardOpen()

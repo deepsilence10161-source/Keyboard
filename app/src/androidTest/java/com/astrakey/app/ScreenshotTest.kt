@@ -91,7 +91,14 @@ class ScreenshotTest {
             attempts++
             if (device.wait(Until.findObject(By.desc("spacebar")), 6000) != null) return
             try {
-                device.wait(Until.findObject(By.clazz("android.widget.EditText")), 3000)?.click()
+                val f = device.wait(Until.findObject(By.clazz("android.widget.EditText")), 3000)
+                if (f != null) f.click()
+                else {
+                    // न दिखे तो स्क्रॉल-पुनःप्रयास (छोटी-स्क्रीन CI)
+                    device.swipe(device.displayWidth / 2, device.displayHeight * 3 / 4,
+                        device.displayWidth / 2, device.displayHeight / 4, 10)
+                    device.waitForIdle(400)
+                }
             } catch (e: androidx.test.uiautomator.StaleObjectException) {
                 Thread.sleep(300)
             }
