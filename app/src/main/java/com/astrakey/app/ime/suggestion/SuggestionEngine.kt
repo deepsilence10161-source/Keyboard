@@ -130,20 +130,41 @@ class SuggestionEngine {
         return prev[n]
     }
 
+    /** Damerau-दूरी (अदला-बदली = 1 — "teh"→"the", "wrold"→"world" वास्तविक-टाइपो) */
+    fun damerauDistance(a: String, b: String): Int {
+        val m = a.length; val n = b.length
+        if (m == 0) return n
+        if (n == 0) return m
+        val dp = Array(m + 1) { IntArray(n + 1) }
+        for (i in 0..m) dp[i][0] = i
+        for (j in 0..n) dp[0][j] = j
+        for (i in 1..m) {
+            for (j in 1..n) {
+                val cost = if (a[i - 1] == b[j - 1]) 0 else 1
+                dp[i][j] = minOf(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost)
+                if (i > 1 && j > 1 && a[i - 1] == b[j - 2] && a[i - 2] == b[j - 1]) {
+                    dp[i][j] = minOf(dp[i][j], dp[i - 2][j - 2] + 1)
+                }
+            }
+        }
+        return dp[m][n]
+    }
+
     /**
      * सर्वश्रेष्ठ-सुधार — टाइप-शब्द शब्दकोश-बाह्य हो तो निकटतम-सामान्य-शब्द:
-     * लंबाई≥6 पर दूरी≤2, अन्यथा ≤1; आवृत्ति-दहलीज़ (दूरी1 ≥40, दूरी2 ≥55);
-     * विश्वास-न्यून हुए null (कोई-सुधार नहीं — शब्द जैसा-है-वैसा)।
+     * लंबाई≥3; Damerau-दूरी (लंबाई≥6 पर ≤2, अन्यथा ≤1); पहला-अक्षर-समान;
+     * आवृत्ति-दहलीज़ (दूरी1 ≥40, दूरी2 ≥55); विश्वास-न्यून हुए null।
      */
     fun bestCorrection(typed: String): String? {
         val p = typed.trim().lowercase()
-        if (p.length < 4 || english.containsKey(p)) return null
+        if (p.length < 3 || english.containsKey(p)) return null
         var best: String? = null
         var bestDist = Int.MAX_VALUE
         var bestFreq = 0
         val maxDist = if (p.length >= 6) 2 else 1
         for ((w, f) in english) {
-            val d = editDistance(p, w)
+            if (w[0] != p[0]) continue
+            val d = damerauDistance(p, w)
             if (d > maxDist || d == 0) continue
             val freqFloor = if (d == 1) 40 else 55
             if (f < freqFloor) continue
