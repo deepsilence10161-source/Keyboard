@@ -237,10 +237,11 @@ class E2ETypingTest {
             // पूर्ण-लॉग-फ़ाइल-चैनल (Gradle-लंबी-पंक्ति-कटौती-जाल-रक्षा) — ci.yml-diag adb-pull-करता-है
             device.executeShellCommand("mkdir -p /sdcard/Download/AstraKey")
             device.executeShellCommand("logcat -d -s AstraKeyUI > /sdcard/Download/AstraKey/hinglish_fail.log 2>&1")
-            // विफलता-क्षण-का-a11y-वृक्ष — desc-सूची (निर्णायक-सबूत)
+            // विफलता-क्षण-का-a11y-वृक्ष + स्क्रीनशॉट (पिक्सेल-सबूत)
             device.executeShellCommand("uiautomator dump /sdcard/Download/AstraKey/fail_ui.xml")
             val dump = device.executeShellCommand("cat /sdcard/Download/AstraKey/fail_ui.xml")
             val descs = dump.split("desc=\"").drop(1).map { it.substringBefore('"') }.filter { it.isNotBlank() }
+            try { device.takeScreenshot(java.io.File("/sdcard/Download/AstraKey/hinglish_fail.png")) } catch (_: Exception) {}
             val logs = device.executeShellCommand("logcat -d -s AstraKeyUI")
             val seq = logs.split("\n").filter { it.contains("AstraKeyUI") }.takeLast(12).joinToString(" || ")
             org.junit.Assert.fail("नमस्ते सुझाव नहीं मिला | वृक्ष-desc=${descs.take(50)} | $seq")
