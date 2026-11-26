@@ -438,4 +438,120 @@ class E2ETypingTest {
             assertNotNull("गायब: $desc", device.wait(Until.findObject(By.desc(desc)), 4000))
         }
     }
+
+    /** prefs में ui_mode सेट + कीबोर्ड-पुनःखुलने से लागू */
+    private fun setModePref(mode: String) {
+        androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
+            .getSharedPreferences("astrakey_prefs", android.content.Context.MODE_PRIVATE)
+            .edit().putString("ui_mode", mode).commit()
+    }
+
+    private fun restoreFullMode() {
+        setModePref("full")
+        androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
+            .getSharedPreferences("astrakey_prefs", android.content.Context.MODE_PRIVATE)
+            .edit().putInt("float_top", 0).putInt("float_tx", 0).commit()
+        device.pressBack()
+        Thread.sleep(300)
+        tapEditText()
+        ensureKeyboardOpen()
+    }
+
+    @Test
+    fun oneHandedLeftNarrowsKeyboardAndTypes() {
+        tapEditText()
+        ensureKeyboardOpen()
+        device.pressBack()
+        Thread.sleep(400)
+        val radio = device.wait(Until.findObject(By.res("com.astrakey.app", "radioModeLeft")), 5000)
+        assertNotNull("एक-हाथ-बाएँ-रेडियो नहीं मिला", radio)
+        radio.click()
+        Thread.sleep(300)
+        tapEditText()
+        ensureKeyboardOpen()
+
+        // कीबोर्ड-सीमा: 123 (बाएँ-सिरा) → enter (दाएँ-सिरा) — संकरा + बाएँ-स्थिर
+        val k123 = device.wait(Until.findObject(By.desc("123")), 5000)
+        val enter = device.wait(Until.findObject(By.desc("enter")), 5000)
+        assertNotNull("123 की गायब", k123)
+        assertNotNull("enter की गायब", enter)
+        val left = k123.visibleBounds.left
+        val right = enter.visibleBounds.right
+        val sw = device.displayWidth
+        val kbWidth = right - left
+        assertTrue("कीबोर्ड संकरा नहीं: w=$kbWidth स्क्रीन=$sw", kbWidth < sw * 0.82)
+        assertTrue("बाएँ-स्थिर नहीं: left=$left", left < sw * 0.15)
+
+        // टाइपिंग सुरक्षित
+        tapKey("a")
+        device.waitForIdle(600)
+        assertEquals("A", readFieldText())
+
+        restoreFullMode()
+    }
+
+    @Test
+    fun floatingDragRaisesKeyboardAndTypingSurvives() {
+        tapEditText()
+        ensureKeyboardOpen()
+        device.pressBack()
+        Thread.sleep(400)
+        val radio = device.wait(Until.findObject(By.res("com.astrakey.app", "radioModeFloat")), 5000)
+        assertNotNull("फ्लोटिंग-रेडियो नहीं मिला", radio)
+        radio.click()
+        Thread.sleep(300)
+        tapEditText()
+        ensureKeyboardOpen()
+
+        val bar = device.wait(Until.findObject(By.desc("float_handle")), 5000)
+        assertNotNull("घसीटने-पट्टी नहीं मिली", bar)
+        val before = device.wait(Until.findObject(By.desc("spacebar")), 5000)
+        assertNotNull("spacebar गायब", before)
+        val beforeTop = before.visibleBounds.top
+
+        // पट्टी को ऊपर घसीटो (raw-स्पर्श — device.swipe)
+        val bb = bar.visibleBounds
+        device.swipe(bb.centerX(), bb.centerY(), bb.centerX(), bb.centerY() - device.displayHeight / 5, 24)
+        device.waitForIdle(1000)
+
+        val after = device.wait(Until.findObject(By.desc("spacebar")), 5000)
+        assertNotNull("spacebar गायब (ड्रैग के बाद)", after)
+        val afterTop = after.visibleBounds.top
+        assertTrue(
+            "फ्लोट-ड्रैग से कीबोर्ड ऊपर नहीं उठा: before=$beforeTop after=$afterTop",
+            afterTop < beforeTop - device.displayHeight / 8
+        )
+
+        // टाइपिंग सुरक्षित
+        tapKey("a")
+        device.waitForIdle(600)
+        assertEquals("A", readFieldText())
+
+        restoreFullMode()
+    }
+
+    @Test
+    fun sunsetThemeSwitchAndTypingSurvives() {
+        tapEditText()
+        ensureKeyboardOpen()
+        device.pressBack()
+        Thread.sleep(400)
+        val radio = device.wait(Until.findObject(By.res("com.astrakey.app", "radioSunset")), 5000)
+        assertNotNull("सूर्यास्त-रेडियो नहीं मिला", radio)
+        radio.click()
+        Thread.sleep(300)
+        tapEditText()
+        ensureKeyboardOpen()
+        tapKey("a")
+        device.waitForIdle(600)
+        assertEquals("A", readFieldText())
+        // बहाली — डार्क
+        androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
+            .getSharedPreferences("astrakey_prefs", android.content.Context.MODE_PRIVATE)
+            .edit().putString("theme_name", "dark").commit()
+        device.pressBack()
+        Thread.sleep(300)
+        tapEditText()
+        ensureKeyboardOpen()
+    }
 }

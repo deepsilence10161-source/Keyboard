@@ -13,7 +13,11 @@ object KeyboardTheme {
     const val LIGHT_NAME = "light"
     const val AMOLED_NAME = "amoled"
     const val OCEAN_NAME = "ocean"
-    val ALL_NAMES = listOf(DARK_NAME, LIGHT_NAME, AMOLED_NAME, OCEAN_NAME)
+    const val SUNSET_NAME = "sunset"
+    const val FOREST_NAME = "forest"
+    const val LAVENDER_NAME = "lavender"
+    const val ROSE_NAME = "rose"
+    val ALL_NAMES = listOf(DARK_NAME, LIGHT_NAME, AMOLED_NAME, OCEAN_NAME, SUNSET_NAME, FOREST_NAME, LAVENDER_NAME, ROSE_NAME)
 
     data class Palette(
         val bg: Int,
@@ -114,10 +118,94 @@ object KeyboardTheme {
         keyRadiusDp = 10f
     )
 
+    /** सूर्यास्त — गर्म-बैंगनी-गुलाबी (v0.8.0) */
+    val SUNSET = Palette(
+        bg = 0xFF2A1B26.toInt(),
+        keyFill = 0xFF3E2A38.toInt(),
+        specialFill = 0xFF33232C.toInt(),
+        pressedFill = 0xFF55394A.toInt(),
+        keyText = 0xFFF5E9EF.toInt(),
+        secondaryText = 0xFFB39AAC.toInt(),
+        accent = 0xFFFF8A65.toInt(),
+        spaceFill = 0xFF3E2A38.toInt(),
+        spaceBorder = 0xFF7A5566.toInt(),
+        toolbarIcon = 0xFFF5E9EF.toInt(),
+        panelBg = 0xFF241720.toInt(),
+        panelCard = 0xFF3A2A33.toInt(),
+        suggMain = 0xFFF5E9EF.toInt(),
+        suggSide = 0xFFB39AAC.toInt(),
+        stripBg = 0xFF342331.toInt(),
+        keyRadiusDp = 10f
+    )
+
+    /** वन — गहरा-हरा (v0.8.0) */
+    val FOREST = Palette(
+        bg = 0xFF16241B.toInt(),
+        keyFill = 0xFF2A3D31.toInt(),
+        specialFill = 0xFF1F2F26.toInt(),
+        pressedFill = 0xFF3D5747.toInt(),
+        keyText = 0xFFE6F0EA.toInt(),
+        secondaryText = 0xFF9DB8A8.toInt(),
+        accent = 0xFF66BB6A.toInt(),
+        spaceFill = 0xFF2A3D31.toInt(),
+        spaceBorder = 0xFF5A7A66.toInt(),
+        toolbarIcon = 0xFFE6F0EA.toInt(),
+        panelBg = 0xFF1A2C21.toInt(),
+        panelCard = 0xFF2E4536.toInt(),
+        suggMain = 0xFFE6F0EA.toInt(),
+        suggSide = 0xFF9DB8A8.toInt(),
+        stripBg = 0xFF22362A.toInt(),
+        keyRadiusDp = 10f
+    )
+
+    /** लैवेंडर — बैंगनी-आसमानी (v0.8.0) */
+    val LAVENDER = Palette(
+        bg = 0xFF232033.toInt(),
+        keyFill = 0xFF393552.toInt(),
+        specialFill = 0xFF2D2A42.toInt(),
+        pressedFill = 0xFF4C4769.toInt(),
+        keyText = 0xFFEFEDF8.toInt(),
+        secondaryText = 0xFFABA6C6.toInt(),
+        accent = 0xFFB39DDB.toInt(),
+        spaceFill = 0xFF393552.toInt(),
+        spaceBorder = 0xFF6A6490.toInt(),
+        toolbarIcon = 0xFFEFEDF8.toInt(),
+        panelBg = 0xFF262238.toInt(),
+        panelCard = 0xFF3D3959.toInt(),
+        suggMain = 0xFFEFEDF8.toInt(),
+        suggSide = 0xFFABA6C6.toInt(),
+        stripBg = 0xFF332F4A.toInt(),
+        keyRadiusDp = 10f
+    )
+
+    /** गुलाब — गुलाबी-गोल्ड (v0.8.0) */
+    val ROSE = Palette(
+        bg = 0xFF2A1E20.toInt(),
+        keyFill = 0xFF412F33.toInt(),
+        specialFill = 0xFF352628.toInt(),
+        pressedFill = 0xFF573F44.toInt(),
+        keyText = 0xFFF8ECED.toInt(),
+        secondaryText = 0xFFBCA2A6.toInt(),
+        accent = 0xFFF48FB1.toInt(),
+        spaceFill = 0xFF412F33.toInt(),
+        spaceBorder = 0xFF7C5D63.toInt(),
+        toolbarIcon = 0xFFF8ECED.toInt(),
+        panelBg = 0xFF241A1C.toInt(),
+        panelCard = 0xFF3D2D30.toInt(),
+        suggMain = 0xFFF8ECED.toInt(),
+        suggSide = 0xFFBCA2A6.toInt(),
+        stripBg = 0xFF372A2D.toInt(),
+        keyRadiusDp = 10f
+    )
+
     fun palette(mode: String): Palette = when (mode) {
         LIGHT_NAME -> LIGHT
         AMOLED_NAME -> AMOLED
         OCEAN_NAME -> OCEAN
+        SUNSET_NAME -> SUNSET
+        FOREST_NAME -> FOREST
+        LAVENDER_NAME -> LAVENDER
+        ROSE_NAME -> ROSE
         else -> DARK
     }
 

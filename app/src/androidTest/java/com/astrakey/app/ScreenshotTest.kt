@@ -35,9 +35,8 @@ class ScreenshotTest {
         setPref("theme_dark", true)
         setPref("lang_english", true)
         setPref("number_row", false)
-        InstrumentationRegistry.getInstrumentation().targetContext
-            .getSharedPreferences("astrakey_prefs", android.content.Context.MODE_PRIVATE)
-            .edit().putString("theme_name", "dark").commit()
+        setStr("ui_mode", "full")
+        setStr("theme_name", "dark")
         ActivityScenario.launch(MainActivity::class.java)
         device.waitForIdle(3000)
     }
@@ -126,6 +125,12 @@ class ScreenshotTest {
             .edit().putBoolean(key, value).commit()
     }
 
+    private fun setStr(key: String, value: String) {
+        val ctx = InstrumentationRegistry.getInstrumentation().targetContext
+        ctx.getSharedPreferences("astrakey_prefs", Context.MODE_PRIVATE)
+            .edit().putString(key, value).commit()
+    }
+
     @Test
     fun captureAllKeyboardStates() {
         // 01 — डार्क (डिफ़ॉल्ट)
@@ -187,12 +192,30 @@ class ScreenshotTest {
         shot("10_symbols.png")
         tapKey("back")
 
-        // बहाली — डार्क + अंग्रेज़ी
+        // 11 — फ्लोटिंग मोड (संकरा कीबोर्ड + घसीटने-पट्टी)
+        closeKb()
+        setStr("ui_mode", "float")
+        openKb()
+        shot("11_floating.png")
+
+        // 12 — एक-हाथ-बाएँ
+        closeKb()
+        setStr("ui_mode", "left")
+        openKb()
+        shot("12_onehand_left.png")
+
+        // 13 — सूर्यास्त थीम (नई पार्श्व-पंक्ति थीम)
+        closeKb()
+        setStr("ui_mode", "full")
+        setStr("theme_name", "sunset")
+        openKb()
+        shot("13_sunset_theme.png")
+
+        // बहाली — डार्क + अंग्रेज़ी + पूर्ण-मोड
         closeKb()
         setPref("theme_dark", true)
-        InstrumentationRegistry.getInstrumentation().targetContext
-            .getSharedPreferences("astrakey_prefs", android.content.Context.MODE_PRIVATE)
-            .edit().putString("theme_name", "dark").commit()
+        setStr("ui_mode", "full")
+        setStr("theme_name", "dark")
         openKb()
         tapKey("language")
         assertNotNull(device.wait(Until.findObject(By.desc("spacebar")), 6000))

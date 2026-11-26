@@ -70,4 +70,17 @@ class KeyboardThemeTest {
             assertTrue(p.keyRadiusDp > 0f)
         }
     }
+
+    @Test fun `four new v080 palettes complete and resolve`() {
+        listOf(KeyboardTheme.SUNSET, KeyboardTheme.FOREST, KeyboardTheme.LAVENDER, KeyboardTheme.ROSE).forEach { p ->
+            assertTrue(p.pressedFill != p.keyFill)
+            assertTrue(p.suggMain != 0)
+            assertTrue(p.keyRadiusDp > 0f)
+        }
+        assertEquals(KeyboardTheme.SUNSET, KeyboardTheme.palette("sunset"))
+        assertEquals(KeyboardTheme.FOREST, KeyboardTheme.palette("forest"))
+        assertEquals(KeyboardTheme.LAVENDER, KeyboardTheme.palette("lavender"))
+        assertEquals(KeyboardTheme.ROSE, KeyboardTheme.palette("rose"))
+        assertEquals(8, KeyboardTheme.ALL_NAMES.size)
+    }
 }

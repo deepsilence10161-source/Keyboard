@@ -107,6 +107,84 @@
                 android:textSize="14sp" />
         </RadioGroup>
 
+        <RadioGroup
+            android:id="@+id/themeGroup2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <RadioButton
+                android:id="@+id/radioSunset"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="सूर्यास्त"
+                android:textSize="14sp" />
+
+            <RadioButton
+                android:id="@+id/radioForest"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="वन"
+                android:textSize="14sp" />
+
+            <RadioButton
+                android:id="@+id/radioLavender"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="लैवेंडर"
+                android:textSize="14sp" />
+
+            <RadioButton
+                android:id="@+id/radioRose"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="गुलाब"
+                android:textSize="14sp" />
+        </RadioGroup>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="स्थिति-मोड:"
+            android:textSize="14sp"
+            android:textColor="@color/key_text" />
+
+        <RadioGroup
+            android:id="@+id/modeGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <RadioButton
+                android:id="@+id/radioModeFull"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="पूर्ण"
+                android:textSize="14sp" />
+
+            <RadioButton
+                android:id="@+id/radioModeFloat"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="फ्लोटिंग"
+                android:textSize="14sp" />
+
+            <RadioButton
+                android:id="@+id/radioModeLeft"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="एक-हाथ-बाएँ"
+                android:textSize="14sp" />
+
+            <RadioButton
+                android:id="@+id/radioModeRight"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="एक-हाथ-दाएँ"
+                android:textSize="14sp" />
+        </RadioGroup>
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

@@ -29,7 +29,8 @@ class KeyboardView(
     context: Context,
     private val icProvider: () -> InputConnection?,
     private val editorInfoProvider: () -> EditorInfo?,
-    private val hideRequester: () -> Unit
+    private val hideRequester: () -> Unit,
+    private val uiController: ((String, Float, Float) -> Unit)? = null
 ) : LinearLayout(context) {
 
     enum class Panel { SUGGEST, EMOJI, CLIP, SYMBOLS }
@@ -72,6 +73,11 @@ class KeyboardView(
     private val toolbar = LinearLayout(context)
     private val strip = LinearLayout(context)
     private val rowsBox = LinearLayout(context)
+    /** फ्लोट/एक-हाथ-मोड की घसीटने-पट्टी (सबसे-ऊपर; FULL में छिपी) */
+    private val floatBar = LinearLayout(context)
+    private var barDrag = false
+    private var barRawX0 = 0f
+    private var barRawY0 = 0f
 
     private val pal get() = KeyboardTheme.palette(themeName)
 
@@ -89,6 +95,8 @@ class KeyboardView(
         addView(toolbar)
         addView(strip)
         addView(rowsBox)
+        buildFloatBar()
+        addView(floatBar, 0)
         ContextCompat.registerReceiver(
             context.applicationContext, voiceReceiver,
             IntentFilter(com.astrakey.app.VoiceInputActivity.ACTION_RESULT),
@@ -100,6 +108,63 @@ class KeyboardView(
     override fun onDetachedFromWindow() {
         try { context.applicationContext.unregisterReceiver(voiceReceiver) } catch (_: Exception) {}
         super.onDetachedFromWindow()
+    }
+
+    // ---------- फ्लोट/एक-हाथ-घसीटने-पट्टी ----------
+
+    private fun buildFloatBar() {
+        floatBar.orientation = HORIZONTAL
+        floatBar.gravity = Gravity.CENTER_VERTICAL
+        floatBar.setPadding(dp(6), dp(2), dp(6), dp(2))
+        floatBar.layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, dp(26))
+        floatBar.visibility = GONE
+        // घसीटने-क्षेत्र (पूरी पट्टी)
+        val handle = TextView(context)
+        handle.text = "⠿⠿"
+        handle.contentDescription = "float_handle"
+        handle.textSize = 12f
+        handle.setTextColor(pal.secondaryText)
+        handle.gravity = Gravity.CENTER
+        val hlp = LayoutParams(0, LayoutParams.MATCH_PARENT, 1f)
+        handle.layoutParams = hlp
+        floatBar.addView(handle)
+        // पूर्ण-आकार-पुनर्स्थापना
+        val expand = KeyView(context)
+        val elp = LayoutParams(dp(42), LayoutParams.MATCH_PARENT)
+        expand.layoutParams = elp
+        expand.applyGhost(pal.pressedFill, dpf(pal.keyRadiusDp), pal.secondaryText, pal.secondaryText)
+        expand.bind(KeyDef("", action = KeyAction.HIDE, iconRes = R.drawable.ic_chevron_down))
+        expand.contentDescription = "expand_kb"
+        expand.hapticEnabled = hapticOn
+        expand.onKeyTap = { uiController?.invoke("expand", 0f, 0f) }
+        floatBar.addView(expand)
+        // घसीटना — स्क्रीन-निर्देशांक (raw) — व्यू-गति से विक्षुब्ध न हो
+        floatBar.setOnTouchListener { _, ev ->
+            when (ev.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    barDrag = true
+                    barRawX0 = ev.rawX
+                    barRawY0 = ev.rawY
+                    uiController?.invoke("drag_start", 0f, 0f)
+                    true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    uiController?.invoke("drag_move", ev.rawX - barRawX0, barRawY0 - ev.rawY)
+                    true
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    barDrag = false
+                    uiController?.invoke("drag_end", ev.rawX - barRawX0, barRawY0 - ev.rawY)
+                    true
+                }
+                else -> false
+            }
+        }
+    }
+
+    /** सेवा से: फ्लोट-पट्टी दिखाओ/छिपाओ (FULL=छिपी) */
+    fun setFloatBarVisible(visible: Boolean) {
+        floatBar.visibility = if (visible) VISIBLE else GONE
     }
 
     // ---------- मापन (स्क्रीन-अनुपात — SwiftKey जैसा अनुकूलन) ----------
@@ -167,6 +232,7 @@ class KeyboardView(
         val m = metrics()
         toolbar.layoutParams.height = m.toolbarH
         strip.layoutParams.height = m.stripH
+        floatBar.setBackgroundColor(pal.stripBg)
         rebuildToolbar()
         rebuildStrip()
         rebuildRows(m)
@@ -707,6 +773,15 @@ class KeyboardView(
     private fun logD(msg: String) { android.util.Log.d("AstraKeyUI", msg) }
 
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        // घसीटने-पट्टी स्पर्श — जेस्चर-संग्रह से पूर्ण-बाहर (पट्टी ऊपर उठती है, स्थानीय-निर्देशांक भ्रमित करते हैं)
+        val inBar = floatBar.visibility == VISIBLE && ev.y <= floatBar.bottom + dp(4)
+        if (inBar && ev.actionMasked == MotionEvent.ACTION_DOWN) barDrag = true
+        if (barDrag) {
+            if (ev.actionMasked == MotionEvent.ACTION_UP || ev.actionMasked == MotionEvent.ACTION_CANCEL) barDrag = false
+            gesturePts.clear()
+            gestureCandidate = false
+            return super.dispatchTouchEvent(ev)
+        }
         if (!gestureOn || panel != Panel.SUGGEST || !langEnglish) {
             logD("gSkip on=${gestureOn} panel=$panel en=$langEnglish")
             return super.dispatchTouchEvent(ev)
