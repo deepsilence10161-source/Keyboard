@@ -202,6 +202,10 @@ class E2ETypingTest {
         sugg.click()
         device.waitForIdle(800)
         assertEquals("नमस्ते ", readFieldText())
+
+        // स्थिति-बहाली — अंग्रेज़ी मोड (आगामी परीक्षणों के लिए शुद्ध आधार)
+        tapKey("language")
+        device.waitForIdle(400)
     }
 
     @Test

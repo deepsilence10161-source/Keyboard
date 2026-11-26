@@ -31,6 +31,10 @@ class ScreenshotTest {
     @Before
     fun setup() {
         device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+        // शुद्ध-आधार-स्थिति — परीक्षण-क्रम के prefs-रिसाव से स्वतंत्र निश्चित स्क्रीनशॉट
+        setPref("theme_dark", true)
+        setPref("lang_english", true)
+        setPref("number_row", false)
         ActivityScenario.launch(MainActivity::class.java)
         device.waitForIdle(3000)
     }
