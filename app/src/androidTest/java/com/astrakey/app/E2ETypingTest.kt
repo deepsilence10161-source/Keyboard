@@ -126,6 +126,16 @@ class E2ETypingTest {
     }
 
     /** StaleObject सुरक्षा-जाल के साथ EditText टेक्स्ट पढ़ो (हर बार ताज़ा खोज) */
+    /** a11y-वृक्ष-में-चिप-खोज (text या desc) — uiautomator-कैश-जाल-फ़ॉलबैक */
+    private fun findNodeByChip(root: android.view.accessibility.AccessibilityNodeInfo?, want: String): android.view.accessibility.AccessibilityNodeInfo? {
+        if (root == null) return null
+        if (root.text == want || root.contentDescription == want) return root
+        for (i in 0 until root.childCount) {
+            findNodeByChip(root.getChild(i), want)?.let { return it }
+        }
+        return null
+    }
+
     private fun readFieldText(): String {
         var attempts = 0
         while (attempts < 6) {
@@ -231,24 +241,35 @@ class E2ETypingTest {
         listOf("n", "a", "m", "a", "s", "t", "e").forEach { tapKey(it) }
         device.waitForIdle(800)
 
-        // देवनागरी सुझाव चिप — टेक्स्ट-गुण-से खोजो (in-place desc-अद्यतन = a11y-कैश-अप्रचलित-जाल;
-        // पिक्सेल-प्रमाणित: चिप-दिखता-है, text-घटना-ताज़ा) — desc-फ़ॉलबैक
-        val sugg = device.wait(Until.findObject(By.text("नमस्ते")), 5000)
-            ?: device.wait(Until.findObject(By.desc("नमस्ते")), 2000)
-        if (sugg == null) {
-            // पूर्ण-लॉग-फ़ाइल-चैनल (Gradle-लंबी-पंक्ति-कटौती-जाल-रक्षा) — ci.yml-diag adb-pull-करता-है
-            device.executeShellCommand("mkdir -p /sdcard/Download/AstraKey")
-            device.executeShellCommand("logcat -d -s AstraKeyUI > /sdcard/Download/AstraKey/hinglish_fail.log 2>&1")
-            // विफलता-क्षण-का-a11y-वृक्ष + स्क्रीनशॉट (पिक्सेल-सबूत)
-            device.executeShellCommand("uiautomator dump /sdcard/Download/AstraKey/fail_ui.xml")
-            val dump = device.executeShellCommand("cat /sdcard/Download/AstraKey/fail_ui.xml")
-            val descs = dump.split("desc=\"").drop(1).map { it.substringBefore('"') }.filter { it.isNotBlank() }
-            try { device.takeScreenshot(java.io.File("/sdcard/Download/AstraKey/hinglish_fail.png")) } catch (_: Exception) {}
-            val logs = device.executeShellCommand("logcat -d -s AstraKeyUI")
-            val seq = logs.split("\n").filter { it.contains("AstraKeyUI") }.takeLast(12).joinToString(" || ")
-            org.junit.Assert.fail("नमस्ते सुझाव नहीं मिला | वृक्ष-desc=${descs.take(50)} | $seq")
+        // देवनागरी सुझाव चिप — uiautomator-खोज (text→desc), विफल = सीधा-a11y-विंडो-चाल + कोऑर्डिनेट-टैप
+        val sugg = device.wait(Until.findObject(By.text("नमस्ते")), 4000)
+            ?: device.wait(Until.findObject(By.desc("नमस्ते")), 1500)
+        if (sugg != null) {
+            sugg.click()
+        } else {
+            val uiAuto = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().uiAutomation
+            var node: android.view.accessibility.AccessibilityNodeInfo? = null
+            repeat(16) {
+                if (node != null) return@repeat
+                for (w in uiAuto.windows) {
+                    node = findNodeByChip(w.root, "नमस्ते")
+                    if (node != null) return@repeat
+                }
+                Thread.sleep(250)
+            }
+            if (node == null) {
+                // पूर्ण-लॉग-फ़ाइल-चैनल + विफलता-स्क्रीनशॉट (पिक्सेल-सबूत) — ci.yml adb-pull-करता-है
+                device.executeShellCommand("mkdir -p /sdcard/Download/AstraKey")
+                device.executeShellCommand("logcat -d -s AstraKeyUI > /sdcard/Download/AstraKey/hinglish_fail.log 2>&1")
+                try { device.takeScreenshot(java.io.File("/sdcard/Download/AstraKey/hinglish_fail.png")) } catch (_: Exception) {}
+                val logs = device.executeShellCommand("logcat -d -s AstraKeyUI")
+                val seq = logs.split("\n").filter { it.contains("AstraKeyUI") }.takeLast(12).joinToString(" || ")
+                org.junit.Assert.fail("नमस्ते सुझाव नहीं मिला (uiautomator+a11y-विंडो) | $seq")
+            }
+            val r = android.graphics.Rect()
+            node!!.getBoundsInScreen(r)
+            device.click(r.exactCenterX().toInt(), r.exactCenterY().toInt())
         }
-        sugg?.click()
         device.waitForIdle(800)
         assertEquals("नमस्ते ", readFieldText())
 

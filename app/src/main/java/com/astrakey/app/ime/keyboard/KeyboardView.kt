@@ -1145,6 +1145,8 @@ class KeyboardView(
                 tv.text = sug[i]
                 tv.contentDescription = sug[i]
                 tv.visibility = VISIBLE
+                // गतिक-चिप-अद्यतन-की-a11y-घटना-प्रसार — uiautomator-वृक्ष-कैश-अप्रचलित-जाल-रक्षा
+                try { tv.sendAccessibilityEvent(android.view.accessibility.AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) } catch (_: Exception) {}
                 // SwiftKey-स्टाइल: मध्य सुझाव बोल्ड-सफ़ेद, पार्श्व ग्रे
                 val center = i == 1 && sug.size == 3
                 tv.setTextColor(if (center) pal.suggMain else pal.suggSide)
