@@ -296,3 +296,12 @@ jobs:
 - **निदान-स्थापत्य-शिक्षाएँ**: (a) ci.yml `exit 1` पुल-पंक्तियों-से-पहले = पुल-निगलना-जाल — पुल-समूह-भीतर; (b) Gradle-कंसोल-लंबी-पंक्ति-कटौती — JUnit-XML-रिपोर्ट (test-reports-artifact) = कटौती-रहित-चैनल; (c) परीक्षण-भीतर takeScreenshot+logcat-फ़ाइल-चैनल /sdcard/Download/AstraKey = विफलता-क्षण-पिक्सेल-सबूत।
 - **रन 45884056563 S — E2E 27/27 + यूनिट 35/35 शत-प्रतिशत**; स्क्रीनशॉट 15-फ़ाइलें (15_clip_menu — पिन/संपादित/मिटाओ-मेनू पिक्सेल-सत्यापित)।
 - APK v0.11.0 (5,702,273 B) → Drive `AstraKey-v0.11.0-debug-clipmenu-autocorrect-cursorpad.apk` (id 1_oYanWbK5jiaXaaXDbD_SK-Op05bolCW, ⭐)।
+
+### 2026-11-26 — उपयोगकर्ता-शब्दकोश + पेस्ट-चिप + ऊँचाई-सेटिंग (v0.12.0) — निरंतर-मोड M12
+- (a) उपयोगकर्ता-शब्दकोश-सीखना: SuggestionEngine.learn (अक्षर-मात्र 2–24 चर, cap 300 न्यूनतम-गणना-निष्कासन) + सीखे-शब्द-उच्च-प्राथमिकता (hindiFirst-बाद-से-पूर्व; अन्यथा-प्रथम-स्लॉट-स्तर) + स्थायित्व prefs learned_words (word:count,…) load/save — सीखना-बिंदु: स्पेस-कमिट-टाइप-शब्द, चिप-कमिट (lowercase), ऑटो-सुधार-शब्द; KeyboardView.kbHeightMul/applyKbHeightPref।
+- (b) पेस्ट-चिप: क्लिपबोर्ड-पाठ-खाली-शब्द-क्षण-सुझाव-पट्टी "📋 सामग्री" (lastPastedClip-दोहराव-दमन) — commit(clip)+desc paste_chip; सिग्नेचर-clip-सहित।
+- (c) कीबोर्ड-ऊँचाई: prefs kb_height small(0.88)/normal(1.0)/tall(1.14) → rowH-गुणक (40–84dp-बंधन) + सेटिंग्स heightGroup-रेडियो।
+- E2E +3 (30 कुल): learnedWordSurfacesInSuggestions (सीखा-"flurb" चिप-क्लिक), pasteChipPastesClipboard (paste_chip-क्लिक→"hello123"), keyboardHeightSettingChangesKeySize (tall>normal spacebar-ऊँचाई-मापन); यूनिट +4 (39 कुल): सीखा-सुझाव/cap-300/junk-छन्नी/setLearned; शॉट 16 (16_paste_chip — "📋 पेस्ट-चिप" चिप स्पष्ट-सत्यापित)।
+- **परीक्षण-जाल-शिक्षाएँ**: (a) am start -S = लक्ष्य-प्रक्रिया-मृत्यु = instrumentation-स्वयं-मृत (androidTest-ऐप-प्रक्रिया-में-चलता) — **कभी-नहीं**; ActivityScenario.onActivity-मुख्य-थ्रेड-setText-विधा; (b) Ctrl+a-टैप-क्षेत्र-चयन-शेष-रहता (उपयोगकर्ता-दृश्य-चयन≠प्रोग्राम-सफ़ाई); (c) SUGGEST-पैनल back-की-रहित — पैनल-परीक्षण-अंत-पुष्टि-सावधानी; (d) एक-backspace = केवल-अनुगामी-स्पेस — पूर्ण-क्षेत्र-सफ़ाई Ctrl+a-बाद-भी।
+- **रन-गाथा**: 45886471371 F (3-जाल) → 45887927264 S (30/30+39/39, शॉट-सुधार-चक्र: 769bcf2/7e22b64) → 45891399396 F (am -S-मृत्यु; Robolectric-क्षणिक-पुनःचालन) → **45892822965 S — E2E 30/30 + यूनिट 39/39 शत-प्रतिशत**।
+- APK v0.12.0 (5,707,741 B) → Drive `AstraKey-v0.12.0-debug-learn-pastechip-height.apk` (id 1Qwt-qcQRFrgLa3LAag5ZC9kTPAYOGFU-, ⭐)।
