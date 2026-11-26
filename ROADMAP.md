@@ -250,3 +250,14 @@ jobs:
 - **एजेंट-दृश्य-निष्कर्ष (स्वयं आँखों से)**: डार्क थीम + नेव-ऊपर-बैठना ✅, Ctrl-मोड A/Z/X/C/V/Y नीले ✅, इमोजी-पैनल (हाल के+ग्रिड) ✅, क्लिपबोर्ड-पैनल (लाइव-इतिहास 3 प्रविष्टियाँ) ✅, लाइट-थीम ✅, हिंग्लिश सुझाव "कैसे" लाइव ✅।
 - APK v0.5.0 (code 6, 5.66MB) → Drive `AstraKey-v0.5.0-debug-E2E-14tests.apk` (id 1y6ucAEH-qCe0JCS7bMc-snakTzQdQKQU)।
 - स्क्रीनशॉट संग्रह: /home/user/screenshots/AstraKey/ (01–08)
+
+### 2026-11-26 — माइक + 4 थीम + जेस्चर-टाइपिंग (v0.6.0) — लगातार-चक्र, अंतिम-रिपोर्ट
+- उपयोगकर्ता-निर्देश: "लगातार करते रहो, बीच में रोककर अपडेट मत दो" → निरंतर-चक्र, संवाद केवल अंत में।
+- माइक: VoiceInputActivity (Intent-पहचानकर्ता + प्रसारण — SwiftKey VoiceInputHelperActivity-पैटर्न), टूलबार-आइकन, E2E micLaunchesRecognizerAndKeyboardSurvives।
+- थीम: KeyboardTheme 4-पटल (डार्क/लाइट/एमोलेड/ओशन) + theme_name-prefs (पुरानी theme_dark-संगत) + RadioGroup-सेटिंग्स; E2E radioAmoled-स्विच।
+- जेस्चर: dispatchTouchEvent-निरीक्षण (स्वाइप-पथ संग्रह, टैप-दमन), पथ-रीसैंपल (16-बिंदु) + शब्दकोश-पथ-मिलान (औसत-दूरी − आवृत्ति-सहायता), KeyView.abortTouch (रिपीट/अल्ट-टाइमर रक्षा), सेटिंग्स-स्विच।
+- **जेस्चर-निदान-कथा (5 रन)**: sendPointerSync IME-अवरोध → UiAutomation.injectInputEvent (घटनाएँ पहुँची पर "type" शब्दकोश-बाह्य) → शब्दकोश type/qwerty/tree + device.swipe (कार्यशील) → निदान-लॉग से **तीव्र-स्वाइप सह-एकीकृत-मूव जाल** (पथ 74px रुका; UP 174px) → **UP-स्थिति पथ में** → विघटन सफल "qwerty"।
+- रन: 45733093994 F (gradlew 644 — **बग 15: स्नैपशॉट-मोड-क्षत**; git --chmod=+x + CI chmod-चरण), 45733326530 F (toast-सहायक), 45733680565 F (Rect.centerX()), 45734287059 F (sendPointerSync), 45734931539 F (dict+inject), 45735953390 F (निदान: लॉग-खाली), 45736826785 F (निदान: water/qwerty), 45737641590 F (निदान: UP-जाल पकड़ा), **45738403238 S — 15/15 लाइव E2E**।
+- एजेंट-दृश्य-सत्यापन: 09_amoled (शुद्ध-काला, माइक-आइकन, जेस्चर-स्विच) + 01_dark (स्वच्छ-आधार: English-स्पेसबार, बिना-नंबर-रो) — दोनों परफेक्ट।
+- APK v0.6.0 (code 7, 5.67MB) → Drive; स्क्रीनशॉट 01–09 /home/user/screenshots/AstraKey/।
+- **नया सत्र-नियम**: /home/user/.config-git/session_restore.sh — हर सत्र-शुरुआत में चलाओ (askpass-exec, gradlew-exec, origin-रिमोट बहाली)।
