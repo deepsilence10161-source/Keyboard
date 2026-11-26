@@ -249,9 +249,11 @@ class ScreenshotTest {
         closeKb()
         cm2.setPrimaryClip(android.content.ClipData.newPlainText("test", "पेस्ट-चिप पाठ v12"))
         setStr("lang_mode", "en")
-        // ऐप-फोर्स-रीस्टार्ट — ताज़ा-खाली-क्षेत्र (setText/चयन-शेष-जाल-से-बचाव; क्लिपबोर्ड-प्रणाली-सेवा-में-बचा)
-        device.executeShellCommand("am start -S -n com.astrakey.app/.MainActivity")
-        device.waitForIdle(1500)
+        // मुख्य-थ्रेड-सीधा-क्षेत्र-खाली (am start -S = instrumentation-स्वयं-मृत-जाल — कभी-नहीं)
+        androidx.test.core.app.ActivityScenario.launch(com.astrakey.app.MainActivity::class.java).onActivity { act ->
+            act.findViewById<android.widget.EditText>(com.astrakey.app.R.id.demoEdit).setText("")
+        }
+        device.waitForIdle(800)
         openKb()
         shot("16_paste_chip.png")
 
