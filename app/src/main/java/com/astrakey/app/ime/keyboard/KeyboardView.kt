@@ -780,10 +780,12 @@ class KeyboardView(
     }
 
     private fun commit(text: String) {
-        val ic = icProvider() ?: return
+        val ic = icProvider()
+        if (ic == null) { logD("commit ic-NULL text=$text"); return }
         val before = snap(ic)
         ic.commitText(text, 1)
         val after = snap(ic)
+        logD("commit done text=$text before=${before?.text?.length} after=${after?.text?.length}")
         if (before != null && after != null) {
             commands.pushUndo(before, after, text.length == 1 && text[0].isLetterOrDigit())
         }
