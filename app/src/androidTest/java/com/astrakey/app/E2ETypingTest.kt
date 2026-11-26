@@ -420,7 +420,10 @@ class E2ETypingTest {
         tapKey("clipboard")
         val entry = device.wait(Until.findObject(By.desc("clip_entry")), 6000)
         assertNotNull("क्लिप-प्रविष्टि गायब", entry)
-        entry.longClick() // पिन
+        entry.longClick() // मेनू खुले (v0.10.0-विधा)
+        val pinItem = device.wait(Until.findObject(By.text("पिन करो")), 5000)
+        assertNotNull("पिन-विकल्प गायब", pinItem)
+        pinItem.click()
         val pinned = device.wait(Until.findObject(By.desc("clip_pinned")), 6000)
         assertNotNull("पिन नहीं हुआ", pinned)
         tapKey("clear") // बिना-पिन सफ़ाई
@@ -428,9 +431,11 @@ class E2ETypingTest {
         assertNotNull("पिन मिट गया!", device.wait(Until.findObject(By.desc("clip_pinned")), 4000))
         assertEquals("पिन-रहित शेष होने चाहिए", 0,
             device.findObjects(By.desc("clip_entry")).size)
-        // स्थिति-सफ़ाई (पिन हटाओ — आगामी परीक्षणों हेतु)
+        // स्थिति-सफ़ाई (मेनू से अनपिन — आगामी परीक्षणों हेतु)
         val pr = device.wait(Until.findObject(By.desc("clip_pinned")), 3000)
         pr?.longClick()
+        val unpin = device.wait(Until.findObject(By.text("अनपिन")), 3000)
+        unpin?.click()
         tapKey("back")
     }
 
