@@ -624,8 +624,11 @@ class KeyboardView(
     // ---------- जेस्चर-टाइपिंग (स्वाइप → शब्द) ----------
 
     /** पूरे कीबोर्ड पर स्पर्श-निरीक्षण — स्वाइप-पथ संग्रहित, टैप बाल-कीज़ तक जाते हैं */
+    private fun logD(msg: String) { android.util.Log.d("AstraKeyUI", msg) }
+
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
         if (!gestureOn || panel != Panel.SUGGEST || !langEnglish) {
+            logD("gSkip on=${gestureOn} panel=$panel en=$langEnglish")
             return super.dispatchTouchEvent(ev)
         }
         when (ev.actionMasked) {
@@ -634,6 +637,7 @@ class KeyboardView(
                 gesturePts.add(ev.x to ev.y)
                 gestureCandidate = false
                 gestureStartAt = System.currentTimeMillis()
+                logD("gDown ${ev.x},${ev.y}")
             }
             MotionEvent.ACTION_MOVE -> {
                 if (!gestureCandidate) {
@@ -643,6 +647,7 @@ class KeyboardView(
                     if (gesturePts.size >= 2 && pathLength(gesturePts) > dp(70)) {
                         gestureCandidate = true
                         allKeyViews.forEach { it.abortTouch() } // बैकस्पेस-रिपीट/अल्ट-टाइमर रक्षा
+                        logD("gCandidate pts=${gesturePts.size} len=${pathLength(gesturePts)}")
                     }
                 }
                 if (gestureCandidate) return true // बाल-कीज़ तक घटना नहीं जाए
@@ -655,7 +660,10 @@ class KeyboardView(
                     gestureCandidate = false
                     if (dur >= 150 && pts.size >= 6) {
                         val word = decodeGesture(pts)
+                        logD("gUp dur=$dur pts=${pts.size} decoded=$word")
                         if (word != null) { commit(word); updateSuggestions() }
+                    } else {
+                        logD("gUpShort dur=$dur pts=${pts.size}")
                     }
                     return true // टैप-दमन (की-टैप दोहराव न हो)
                 }
@@ -701,6 +709,7 @@ class KeyboardView(
             val score = sum / 16f - freq * 0.02f // आवृत्ति-सहायता
             if (score < bestScore) { bestScore = score; best = word }
         }
+        logD("gDecode centers=${centers.size} best=$best score=$bestScore")
         return if (bestScore < dp(26)) best else null
     }
 

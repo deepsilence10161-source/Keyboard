@@ -405,7 +405,8 @@ class E2ETypingTest {
         val (ex, ey) = centers[seq.last()]!!
         auto.injectInputEvent(mk(android.view.MotionEvent.ACTION_UP, ex, ey, dt), true)
         device.waitForIdle(1200)
-        assertEquals("type", readFieldText())
+        val logs = device.executeShellCommand("logcat -d -s AstraKeyUI")
+        assertEquals("type | logs=${logs.take(1200)}", "type", readFieldText())
     }
 
     @Test
