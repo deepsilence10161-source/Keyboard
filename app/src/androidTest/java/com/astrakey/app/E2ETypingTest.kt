@@ -781,8 +781,9 @@ class E2ETypingTest {
         listOf("f", "l", "u", "r", "b").forEach { tapKey(it) }
         tapKey("spacebar")
         device.waitForIdle(700)
-        tapKey("backspace") // क्षेत्र-सफ़ाई ("flurb " हटा)
-        device.waitForIdle(500)
+        // पूर्ण-क्षेत्र-सफ़ाई (एक-backspace = केवल-स्पेस — "Flurb" रह-जाता)
+        repeat(2) { tapKey("Ctrl"); tapKey("a"); tapKey("backspace") }
+        device.waitForIdle(400)
         // "flu" टाइप → सीखा-"flurb" सुझाव-चिप
         listOf("f", "l", "u").forEach { tapKey(it) }
         device.waitForIdle(800)
@@ -818,16 +819,18 @@ class E2ETypingTest {
     @Test
     fun keyboardHeightSettingChangesKeySize() {
         val ctx = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
-        device.pressBack() // ताज़ा-खुलने-गारंटी (प्रति-मापन)
-        Thread.sleep(400)
+        // सशर्त-बंद — कीबोर्ड-बंद-होने-पर-ब्लाइंड-back = ऐप-से-बाहर-जाल
+        fun closeIfOpen() {
+            if (device.hasObject(By.desc("spacebar"))) { device.pressBack(); Thread.sleep(300) }
+        }
         fun measure(): Int {
+            closeIfOpen()
             tapEditText()
             ensureKeyboardOpen()
             val sp = device.wait(Until.findObject(By.desc("spacebar")), 5000)
             assertNotNull("spacebar गायब", sp)
             val h = sp.visibleBounds.height()
-            device.pressBack()
-            Thread.sleep(400)
+            closeIfOpen()
             return h
         }
         ctx.getSharedPreferences("astrakey_prefs", android.content.Context.MODE_PRIVATE)

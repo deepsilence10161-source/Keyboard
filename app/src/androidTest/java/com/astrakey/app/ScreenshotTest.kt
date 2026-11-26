@@ -245,13 +245,12 @@ class ScreenshotTest {
         }
         tapKey("back")
 
-        // 16 — पेस्ट-चिप (क्लिपबोर्ड-सामग्री सुझाव-पट्टी-में)
+        // 16 — पेस्ट-चिप (क्लिपबोर्ड-सामग्री सुझाव-पट्टी-में; SUGGEST-पैनल back-की-रहित)
         closeKb()
         cm2.setPrimaryClip(android.content.ClipData.newPlainText("test", "पेस्ट-चिप पाठ v12"))
         setStr("lang_mode", "en")
         openKb()
         shot("16_paste_chip.png")
-        tapKey("back")
 
         // बहाली — डार्क + अंग्रेज़ी + पूर्ण-मोड
         closeKb()
