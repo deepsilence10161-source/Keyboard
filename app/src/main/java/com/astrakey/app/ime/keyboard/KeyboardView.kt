@@ -655,6 +655,8 @@ class KeyboardView(
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 if (gestureCandidate) {
                     val dur = System.currentTimeMillis() - gestureStartAt
+                    // UP-स्थिति पथ में — तीव्र-स्वाइप में मूव सह-एकीकृत होकर पिछड़ जाते हैं
+                    gesturePts.add(ev.x to ev.y)
                     val pts = gesturePts.toList()
                     gesturePts.clear()
                     gestureCandidate = false
@@ -710,34 +712,6 @@ class KeyboardView(
             if (score < bestScore) { bestScore = score; best = word }
         }
         logD("gDecode centers=${centers.size} best=$best score=$bestScore")
-        logD("gSwipe0=${swipe.first()} swipeLast=${swipe.last()}")
-        centers['q']?.let { logD("cQ=$it") }
-        centers['y']?.let { logD("cY=$it") }
-        val top = mutableListOf<String>()
-        for ((word, freq) in engine.wordsWithFreq) {
-            if (word.length < 3 || word.length > 10) continue
-            val w0 = centers[word[0]] ?: continue
-            val w1 = centers[word[word.length - 1]] ?: continue
-            if (kotlin.math.hypot((first.first - w0.first).toDouble(), (first.second - w0.second).toDouble()) > dp(46)) continue
-            if (kotlin.math.hypot((last.first - w1.first).toDouble(), (last.second - w1.second).toDouble()) > dp(46)) continue
-            val poly = mutableListOf<Pair<Float, Float>>()
-            word.forEach { c -> centers[c]?.let { poly.add(it) } }
-            if (poly.size < word.length) continue
-            val rp = resample(poly, 16)
-            var sum = 0f
-            for (i in 0 until 16) {
-                sum += kotlin.math.hypot(
-                    (swipe[i].first - rp[i].first).toDouble(),
-                    (swipe[i].second - rp[i].second).toDouble()
-                ).toFloat()
-            }
-            val score = sum / 16f - freq * 0.02f
-            if (word in setOf("qwerty", "water", "tree", "the")) {
-                logD("gCand $word score=$score poly0=${rp.first()} polyLast=${rp.last()}")
-            }
-            if (score < bestScore) { bestScore = score; best = word }
-        }
-        logD("gTop best=$best score=$bestScore")
         return if (bestScore < dp(26)) best else null
     }
 
