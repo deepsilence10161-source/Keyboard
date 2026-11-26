@@ -668,6 +668,7 @@ class KeyboardView(
     // ---------- क्रियाएँ ----------
 
     private fun handleKey(k: KeyDef) {
+        logD("key tap=${k.label} act=${k.action} panel=$panel lm=$langMode")
         when (k.action) {
             KeyAction.SHIFT -> { cycleShift(); refreshShiftDisplay() }
             KeyAction.BACKSPACE -> { deleteOne(); updateSuggestions() }
@@ -1126,7 +1127,7 @@ class KeyboardView(
     }
 
     fun updateSuggestions() {
-        if (panel != Panel.SUGGEST) return
+        if (panel != Panel.SUGGEST) { logD("sugSkip panel=$panel"); return }
         val w = currentWord()
         lastWordLen = w.length
         var sug = if (lastWordLen > 0 && langMode != "deva") engine.suggest(w, hindiFirst = langMode == "translit").take(3) else emptyList()
