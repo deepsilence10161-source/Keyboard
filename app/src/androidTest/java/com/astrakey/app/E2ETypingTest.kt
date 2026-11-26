@@ -238,8 +238,8 @@ class E2ETypingTest {
             device.executeShellCommand("mkdir -p /sdcard/Download/AstraKey")
             device.executeShellCommand("logcat -d -s AstraKeyUI > /sdcard/Download/AstraKey/hinglish_fail.log 2>&1")
             val logs = device.executeShellCommand("logcat -d -s AstraKeyUI")
-            val last = logs.split("\n").filter { it.contains("AstraKeyUI") }.takeLast(2).joinToString(" || ")
-            org.junit.Assert.fail("नमस्ते सुझाव नहीं मिला | $last | पूर्ण=hinglish_fail.log")
+            val seq = logs.split("\n").filter { it.contains("AstraKeyUI") }.takeLast(30).joinToString(" || ")
+            org.junit.Assert.fail("नमस्ते सुझाव नहीं मिला | $seq | पूर्ण=hinglish_fail.log")
         }
         sugg?.click()
         device.waitForIdle(800)
