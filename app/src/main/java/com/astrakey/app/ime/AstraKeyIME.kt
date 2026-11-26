@@ -31,10 +31,24 @@ class AstraKeyIME : InputMethodService() {
             uiController = { action, dx, dy -> handleUi(action, dx, dy) }
         )
         keyboardView = kv
-        val h = FrameLayout(this)
+        val h = FloatHost(this)
         h.addView(kv)
         host = h
         return h
+    }
+
+    /**
+     * IMS के बीच-कंटेनर WRAP-ऊँचाई रखते हैं — फ्लोट में host स्वयं पूर्ण-स्क्रीन-ऊँचाई गारंटी करता है
+     * (kv नीचे-स्थिर रहता है; topMargin ऊपर उठाता है — Gboard-फ्लोट-पैटर्न)
+     */
+    private inner class FloatHost(ctx: android.content.Context) : FrameLayout(ctx) {
+        override fun onMeasure(wSpec: Int, hSpec: Int) {
+            super.onMeasure(wSpec, hSpec)
+            if (uiMode != "full") {
+                val scr = resources.displayMetrics.heightPixels
+                if (measuredHeight < scr) setMeasuredDimension(measuredWidth, scr)
+            }
+        }
     }
 
     private fun prefs() = getSharedPreferences("astrakey_prefs", MODE_PRIVATE)
@@ -66,7 +80,7 @@ class AstraKeyIME : InputMethodService() {
             }
             "drag_start" -> {
                 dragStartTx = kv.translationX
-                dragStartTop = (kv.layoutParams as? FrameLayout.LayoutParams)?.topMargin ?: 0
+                dragStartTop = (kv.layoutParams as? FrameLayout.LayoutParams)?.bottomMargin ?: 0
             }
             "drag_move" -> moveFloat(kv, dx, dy, persist = false)
             "drag_end" -> moveFloat(kv, dx, dy, persist = true)
@@ -91,11 +105,11 @@ class AstraKeyIME : InputMethodService() {
                 return
             }
         }
-        lp.topMargin = (dragStartTop + dy).toInt().coerceIn(0, maxTop)
+        lp.bottomMargin = (dragStartTop + dy).toInt().coerceIn(0, maxTop)
         host?.requestLayout()
         if (persist) {
             prefs().edit()
-                .putInt("float_top", lp.topMargin)
+                .putInt("float_top", lp.bottomMargin)
                 .putInt("float_tx", kv.translationX.toInt())
                 .apply()
         }
@@ -131,17 +145,17 @@ class AstraKeyIME : InputMethodService() {
         when (uiMode) {
             "float" -> {
                 lp.gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
-                lp.topMargin = prefs().getInt("float_top", 0).coerceIn(0, maxTop)
+                lp.bottomMargin = prefs().getInt("float_top", 0).coerceIn(0, maxTop)
                 kv.translationX = prefs().getInt("float_tx", 0).toFloat().coerceIn(-sw * 0.12f, sw * 0.12f)
             }
             "left" -> {
                 lp.gravity = Gravity.BOTTOM or Gravity.LEFT
-                lp.topMargin = prefs().getInt("float_top", 0).coerceIn(0, maxTop)
+                lp.bottomMargin = prefs().getInt("float_top", 0).coerceIn(0, maxTop)
                 kv.translationX = 0f
             }
             "right" -> {
                 lp.gravity = Gravity.BOTTOM or Gravity.RIGHT
-                lp.topMargin = prefs().getInt("float_top", 0).coerceIn(0, maxTop)
+                lp.bottomMargin = prefs().getInt("float_top", 0).coerceIn(0, maxTop)
                 kv.translationX = 0f
             }
             else -> kv.translationX = 0f
