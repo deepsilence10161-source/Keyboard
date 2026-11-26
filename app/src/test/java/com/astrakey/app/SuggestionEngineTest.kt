@@ -84,4 +84,38 @@ class SuggestionEngineTest {
         assertEquals(1, engine.editDistance("helo", "hello"))
         assertEquals(2, engine.editDistance("thier", "their"))
     }
+
+    // ---------- उपयोगकर्ता-शब्दकोश-सीखना (v0.12.0) ----------
+
+    @Test fun `learned word surfaces in suggestions`() {
+        val e = SuggestionEngine()
+        e.learn("flurb")
+        e.learn("flurb")
+        val sug = e.suggest("flu")
+        assertTrue("सीखा-शब्द सुझाव में गायब: $sug", sug.contains("flurb"))
+        // प्रथम-EN-स्लॉट-स्तर (dict-प्रत्यय "flu*"-शून्य → सीखा-शब्द नेतृत्व)
+        assertEquals("flurb", sug.firstOrNull())
+    }
+
+    @Test fun `learned words cap at 300`() {
+        val e = SuggestionEngine()
+        repeat(320) { i -> e.learn("zzword$i") }
+        assertTrue("cap-टूटा: ${e.learnedWords().size}", e.learnedWords().size <= 300)
+    }
+
+    @Test fun `learn ignores junk words`() {
+        val e = SuggestionEngine()
+        e.learn("a")          // <2 चर
+        e.learn("hello123")   // अंक-मिश्रित
+        e.learn("")           // खाली
+        assertTrue("junk-सीखा: ${e.learnedWords()}", e.learnedWords().isEmpty())
+    }
+
+    @Test fun `set learned restores map`() {
+        val e = SuggestionEngine()
+        e.setLearned(mapOf("flurb" to 3, "x1" to 1))
+        assertTrue(e.learnedWords().containsKey("flurb"))
+        assertTrue("अवैध-प्रविष्टि छन्नी", !e.learnedWords().containsKey("x1"))
+        assertTrue(e.suggest("flur").contains("flurb"))
+    }
 }

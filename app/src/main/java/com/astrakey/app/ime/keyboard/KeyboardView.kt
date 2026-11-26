@@ -59,6 +59,9 @@ class KeyboardView(
     private var suggestionSlots: MutableList<TextView> = mutableListOf()
     private var hintSlot: TextView? = null
     private var lastSuggestionSignature: String? = null
+    private var pasteSlot: TextView? = null
+    private var lastPastedClip: String? = null
+    private var kbHeightMul = 1f
     private val letterKeyViews: MutableList<KeyView> = mutableListOf()
     private val allKeyViews: MutableList<KeyView> = mutableListOf()
     private var shiftKeyView: KeyView? = null
@@ -185,7 +188,7 @@ class KeyboardView(
         val arrowPart = if (arrowRowOn) arrowRowH + dp(4) else 0
         val rowsN = (if (numberRowOn) 4 else 3) + 1
         val fixed = toolbarH + stripH + arrowPart + dp(16)
-        val rowH = ((budget - fixed) / rowsN).coerceIn(dp(44), dp(72))
+        val rowH = (((budget - fixed) / rowsN) * kbHeightMul).toInt().coerceIn(dp(40), dp(84))
         return Metrics(
             rowH = rowH,
             stripH = stripH,
@@ -319,6 +322,21 @@ class KeyboardView(
             suggestionSlots.add(tv)
             strip.addView(tv)
         }
+        // पेस्ट-चिप (v0.12.0) — क्लिपबोर्ड-सामग्री खाली-शब्द-क्षण में
+        val ps = TextView(context)
+        ps.layoutParams = LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, 1f).apply {
+            setMargins(dp(2), 0, dp(2), 0)
+        }
+        ps.gravity = Gravity.CENTER
+        ps.text = ""
+        ps.textSize = 15f
+        ps.typeface = Typeface.DEFAULT_BOLD
+        ps.setTextColor(pal.suggMain)
+        ps.contentDescription = "paste_chip"
+        ps.visibility = GONE
+        ps.setOnClickListener { pasteClipboard() }
+        pasteSlot = ps
+        strip.addView(ps)
         updateSuggestions()
     }
 
@@ -678,6 +696,7 @@ class KeyboardView(
                     cursorPad = false; rebuildAll(); return
                 }
                 // ऑटो-सुधार (v0.11.0): शब्दकोश-बाह्य-शब्द + स्पेस → निकटतम-सामान्य-शब्द
+                val typedWord = if (cursorPad) "" else currentWord()
                 if (langMode == "en" && prefs.getBoolean("autocorrect", true)) {
                     val w = currentWord()
                     if (w.length >= 4) {
@@ -686,6 +705,7 @@ class KeyboardView(
                             val capped = if (w[0].isUpperCase()) fix.replaceFirstChar { it.uppercaseChar() } else fix
                             icProvider()?.deleteSurroundingText(w.length, 0)
                             commit(capped + " ")
+                            if (fix.length >= 2) { engine.learn(fix.lowercase()); saveLearned() }
                             updateSuggestionsAfterSpace()
                             return
                         }
@@ -699,6 +719,10 @@ class KeyboardView(
                     commit(". ")
                 } else {
                     commit(" ")
+                }
+                if (typedWord.length >= 2 && typedWord.all { it.isLetter() } && langMode != "deva") {
+                    engine.learn(typedWord)
+                    saveLearned()
                 }
                 updateSuggestionsAfterSpace()
             }
@@ -1135,11 +1159,13 @@ class KeyboardView(
             val rest = sug.filter { it != w }
             if (sug.firstOrNull() != w) sug = (listOf(w) + rest).take(3)
         }
-        val sig = sug.joinToString("|")
+        val clip = clipboardText()
+        val sig = sug.joinToString("|") + "|" + (clip ?: "")
         logD("sug w=$w lm=$langMode sig=$sig")
         if (sig == lastSuggestionSignature) return
         lastSuggestionSignature = sig
-        hintSlot?.visibility = if (sug.isEmpty()) VISIBLE else GONE
+        val pasteShow = w.isEmpty() && clip != null && clip != lastPastedClip
+        hintSlot?.visibility = if (sug.isEmpty() && !pasteShow) VISIBLE else GONE
         suggestionSlots.forEachIndexed { i, tv ->
             if (i < sug.size) {
                 tv.text = sug[i]
@@ -1155,6 +1181,11 @@ class KeyboardView(
                 tv.visibility = GONE
             }
         }
+        pasteSlot?.let { ps ->
+            ps.text = if (clip != null) "📋 " + clip.take(10) else ""
+            ps.visibility = if (pasteShow) VISIBLE else GONE
+            try { ps.sendAccessibilityEvent(android.view.accessibility.AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) } catch (_: Exception) {}
+        }
     }
 
     fun updateSuggestionsAfterSpace() {
@@ -1162,11 +1193,50 @@ class KeyboardView(
         updateSuggestions()
     }
 
+    /** prefs ↔ इंजन — सीखे-शब्द स्थायित्व (word:count,…) */
+    private fun loadLearned() {
+        val raw = prefs.getString("learned_words", null) ?: return
+        val map = raw.split(",").mapNotNull {
+            val parts = it.split(":")
+            if (parts.size == 2 && parts[0].isNotEmpty()) parts[0] to (parts[1].toIntOrNull() ?: 1) else null
+        }.toMap()
+        engine.setLearned(map)
+    }
+
+    private fun saveLearned() {
+        val raw = engine.learnedWords().entries.joinToString(",") { "${it.key}:${it.value}" }
+        prefs.edit().putString("learned_words", raw).apply()
+    }
+
+    /** क्लिपबोर्ड-पाठ (फोकस्ड-IME-पढ़ना अनुमत) */
+    private fun clipboardText(): String? {
+        val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager ?: return null
+        if (!cm.hasPrimaryClip()) return null
+        return cm.primaryClip?.getItemAt(0)?.text?.toString()?.trim()?.takeIf { it.isNotEmpty() }
+    }
+
+    /** पेस्ट-चिप-टैप — क्लिपबोर्ड-सामग्री कमिट */
+    private fun pasteClipboard() {
+        val clip = clipboardText() ?: return
+        commit(clip)
+        lastPastedClip = clip
+        updateSuggestions()
+    }
+
+    /** कीबोर्ड-ऊँचाई-मोड (small/normal/tall) */
+    private fun applyKbHeightPref() {
+        kbHeightMul = when (prefs.getString("kb_height", "normal")) { "small" -> 0.88f; "tall" -> 1.14f; else -> 1f }
+    }
+
     private fun commitSuggestion(word: String) {
         val ic = icProvider()
         if (ic != null && lastWordLen > 0) ic.deleteSurroundingText(lastWordLen, 0)
         commit(word + " ")
         lastWordLen = 0
+        if (word.length >= 2 && word.all { it.isLetter() } && langMode != "deva") {
+            engine.learn(word.lowercase())
+            saveLearned()
+        }
         updateSuggestions()
     }
 
@@ -1181,6 +1251,8 @@ class KeyboardView(
         gestureOn = prefs.getBoolean("gesture_on", true)
         panel = Panel.SUGGEST
         lastWordLen = 0
+        applyKbHeightPref()
+        loadLearned()
         val info = editorInfoProvider()
         val ic = icProvider()
         val capOk = info != null && (info.inputType and android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES) != 0

@@ -9,6 +9,9 @@ class SuggestionEngine {
     private val english: Map<String, Int> = buildEnglishDict()
     private val translit: Map<String, String> = buildTranslitMap()
 
+    // उपयोगकर्ता-शब्दकोश (v0.12.0) — स्पेस-कमिट-शब्द-स्मृति; स्थायित्व KeyboardView/prefs-पक्ष-में
+    private val learned = LinkedHashMap<String, Int>()
+
     private fun buildEnglishDict(): Map<String, Int> {
         val words = listOf(
             "the" to 100,"be" to 95,"to" to 94,"of" to 93,"and" to 92,"a" to 91,"in" to 90,
@@ -78,6 +81,13 @@ class SuggestionEngine {
         if (p.isEmpty()) return emptyList()
         val out = LinkedHashSet<String>()
 
+        // सीखे-शब्द — prefix-मेल, गणना-क्रम (उच्च-प्राथमिकता: उपयोगकर्ता-शब्दकोश)
+        val learnedMatches = learned.entries
+            .filter { it.key.startsWith(p) }
+            .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.key == p }.thenByDescending { it.value })
+            .take(max)
+            .map { it.key }
+
         val hiMatches = translit.entries
             .filter { it.key.startsWith(p) }
             .sortedWith(
@@ -92,15 +102,36 @@ class SuggestionEngine {
 
         if (hindiFirst) {
             hiMatches.forEach { out.add(it.value) }
+            learnedMatches.forEach { out.add(it) }
             exactEnglish.forEach { out.add(it) }
             enMatches.forEach { out.add(it) }
         } else {
+            learnedMatches.forEach { out.add(it) }
             exactEnglish.forEach { out.add(it) }
             enMatches.forEach { out.add(it) }
             hiMatches.forEach { out.add(it.value) }
         }
 
         return out.take(max)
+    }
+
+    /** उपयोगकर्ता-शब्द-सीखना — अक्षर-मात्र 2–24 चर; cap 300 (न्यूनतम-गणना-क्षत) */
+    fun learn(word: String) {
+        val w = word.trim().lowercase()
+        if (w.length < 2 || w.length > 24) return
+        if (!w.all { it.isLetter() }) return
+        learned[w] = (learned[w] ?: 0) + 1
+        if (learned.size > 300) {
+            val victim = learned.entries.minByOrNull { it.value }?.key
+            if (victim != null) learned.remove(victim)
+        }
+    }
+
+    /** स्थायित्व-सहायक — सीखे-शब्द-मानचित्र (word:count,…) */
+    fun learnedWords(): Map<String, Int> = learned.toMap()
+    fun setLearned(map: Map<String, Int>) {
+        learned.clear()
+        map.forEach { (k, v) -> if (k.length in 2..24 && k.all { it.isLetter() }) learned[k] = v }
     }
 
     /** ट्रांसलिटरेशन (पूरे शब्द का) — मौजूद नहीं तो null */

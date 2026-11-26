@@ -748,4 +748,96 @@ class E2ETypingTest {
         device.waitForIdle(1000)
         assertEquals("Hello ", readFieldText())
     }
+
+    /** uiautomator-चिप-खोज + a11y-विंडो-फ़ॉलबैक + कोऑर्डिनेट-टैप (a11y-कैश-जाल-रक्षा) */
+    private fun findChipOrTap(want: String, desc: String? = null): androidx.test.uiautomator.UiObject2? {
+        val byText = if (desc != null) By.desc(desc) else By.text(want)
+        val direct = device.wait(Until.findObject(byText), 4000)
+            ?: if (desc != null) device.wait(Until.findObject(By.text(want)), 1500) else null
+        if (direct != null) return direct
+        val uiAuto = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().uiAutomation
+        var node: android.view.accessibility.AccessibilityNodeInfo? = null
+        repeat(10) {
+            if (node != null) return@repeat
+            for (w in uiAuto.windows) {
+                node = findNodeByChip(w.root, want) ?: (desc?.let { findNodeByChip(w.root, it) })
+                if (node != null) return@repeat
+            }
+            Thread.sleep(250)
+        }
+        if (node == null) return null
+        val r = android.graphics.Rect()
+        node!!.getBoundsInScreen(r)
+        device.click(r.exactCenterX().toInt(), r.exactCenterY().toInt())
+        return null // क्लिक-हो-चुका — कॉलर-पुष्टि-पाठ-से
+    }
+
+    @Test
+    fun learnedWordSurfacesInSuggestions() {
+        tapEditText()
+        ensureKeyboardOpen()
+        repeat(2) { tapKey("Ctrl"); tapKey("a"); tapKey("backspace") }
+        // "flurb" टाइप + स्पेस (सीखना)
+        listOf("f", "l", "u", "r", "b").forEach { tapKey(it) }
+        tapKey("spacebar")
+        device.waitForIdle(700)
+        tapKey("backspace") // क्षेत्र-सफ़ाई ("flurb " हटा)
+        device.waitForIdle(500)
+        // "flu" टाइप → सीखा-"flurb" सुझाव-चिप
+        listOf("f", "l", "u").forEach { tapKey(it) }
+        device.waitForIdle(800)
+        val chip = device.wait(Until.findObject(By.text("flurb")), 4000)
+        if (chip == null) {
+            findChipOrTap("flurb") // a11y-फ़ॉलबैक-क्लिक (null-रिटर्न = क्लिक-हो-चुका)
+        } else {
+            chip.click()
+        }
+        device.waitForIdle(700)
+        assertEquals("flurb ", readFieldText())
+    }
+
+    @Test
+    fun pasteChipPastesClipboard() {
+        val ctx = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
+        val cm = ctx.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+        cm.setPrimaryClip(android.content.ClipData.newPlainText("t", "hello123"))
+        tapEditText()
+        ensureKeyboardOpen()
+        device.waitForIdle(500)
+        // खाली-शब्द + क्लिपबोर्ड-सामग्री = पेस्ट-चिप
+        val chip = device.wait(Until.findObject(By.desc("paste_chip")), 4000)
+        if (chip == null) {
+            findChipOrTap("paste_chip") // a11y-फ़ॉलबैक-क्लिक
+        } else {
+            chip.click()
+        }
+        device.waitForIdle(700)
+        assertEquals("hello123", readFieldText())
+    }
+
+    @Test
+    fun keyboardHeightSettingChangesKeySize() {
+        val ctx = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
+        device.pressBack() // ताज़ा-खुलने-गारंटी (प्रति-मापन)
+        Thread.sleep(400)
+        fun measure(): Int {
+            tapEditText()
+            ensureKeyboardOpen()
+            val sp = device.wait(Until.findObject(By.desc("spacebar")), 5000)
+            assertNotNull("spacebar गायब", sp)
+            val h = sp.visibleBounds.height()
+            device.pressBack()
+            Thread.sleep(400)
+            return h
+        }
+        ctx.getSharedPreferences("astrakey_prefs", android.content.Context.MODE_PRIVATE)
+            .edit().putString("kb_height", "normal").commit()
+        val normal = measure()
+        ctx.getSharedPreferences("astrakey_prefs", android.content.Context.MODE_PRIVATE)
+            .edit().putString("kb_height", "tall").commit()
+        val tall = measure()
+        assertTrue("ऊँची($tall) <= सामान्य($normal)", tall > normal)
+        ctx.getSharedPreferences("astrakey_prefs", android.content.Context.MODE_PRIVATE)
+            .edit().putString("kb_height", "normal").commit()
+    }
 }

@@ -82,6 +82,20 @@ class MainActivity : AppCompatActivity() {
                 if (checked) prefs.edit().putString("ui_mode", name).apply()
             }
         }
+
+        // कीबोर्ड-ऊँचाई: छोटी / सामान्य / ऊँची
+        val heightIds = mapOf(
+            "small" to R.id.radioHeightSmall,
+            "normal" to R.id.radioHeightNormal,
+            "tall" to R.id.radioHeightTall
+        )
+        val currentHeight = prefs.getString("kb_height", "normal") ?: "normal"
+        (heightIds[currentHeight] ?: R.id.radioHeightNormal).let { findViewById<android.widget.RadioButton>(it).isChecked = true }
+        heightIds.forEach { (name, id) ->
+            findViewById<android.widget.RadioButton>(id).setOnCheckedChangeListener { _, checked ->
+                if (checked) prefs.edit().putString("kb_height", name).apply()
+            }
+        }
     }
 
     /** कीबोर्ड-सेटिंग स्विच — prefs में सुरक्षित, IME अगली खुलने पर लागू करता है */

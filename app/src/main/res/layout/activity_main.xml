@@ -201,6 +201,41 @@
                 android:textSize="14sp" />
         </RadioGroup>
 
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="कीबोर्ड ऊँचाई"
+            android:textSize="13sp"
+            android:layout_marginTop="10dp" />
+
+        <RadioGroup
+            android:id="@+id/heightGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <RadioButton
+                android:id="@+id/radioHeightSmall"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="छोटी"
+                android:textSize="14sp" />
+
+            <RadioButton
+                android:id="@+id/radioHeightNormal"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="सामान्य"
+                android:textSize="14sp" />
+
+            <RadioButton
+                android:id="@+id/radioHeightTall"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="ऊँची"
+                android:textSize="14sp" />
+        </RadioGroup>
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
