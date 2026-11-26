@@ -220,8 +220,11 @@ class E2ETypingTest {
 
         // देवनागरी सुझाव दिखे और टैप पर क्षेत्र में बदले
         val sugg = device.wait(Until.findObject(By.desc("नमस्ते")), 5000)
-        assertNotNull("नमस्ते सुझाव नहीं मिला", sugg)
-        sugg.click()
+        if (sugg == null) {
+            val logs = device.executeShellCommand("logcat -d -s AstraKeyUI")
+            org.junit.Assert.fail("नमस्ते सुझाव नहीं मिला | logs-tail=${logs.takeLast(3500)}")
+        }
+        sugg?.click()
         device.waitForIdle(800)
         assertEquals("नमस्ते ", readFieldText())
 
