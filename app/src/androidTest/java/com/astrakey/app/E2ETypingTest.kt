@@ -222,7 +222,7 @@ class E2ETypingTest {
         val sugg = device.wait(Until.findObject(By.desc("नमस्ते")), 5000)
         if (sugg == null) {
             val logs = device.executeShellCommand("logcat -d -s AstraKeyUI")
-            org.junit.Assert.fail("नमस्ते सुझाव नहीं मिला | logs-tail=${logs.takeLast(3500)}")
+            org.junit.Assert.fail("नमस्ते सुझाव नहीं मिला | logs-tail=${logs.takeLast(12000)}")
         }
         sugg?.click()
         device.waitForIdle(800)
