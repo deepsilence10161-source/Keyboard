@@ -118,22 +118,44 @@ class CommandEngine(private val appContext: Context) {
 
     // ---------- क्लिपबोर्ड-इतिहास (क्लिपबोर्ड पैनल) ----------
 
-    /** इतिहास: नवीनतम पहले, डुप्लिकेट रहित, अधिकतम 12, prefs में सुरक्षित */
-    fun clipHistory(): List<String> {
-        val raw = prefs.getString("clip_history", null) ?: return emptyList()
+    /** इतिहास (बिना-पिन): नवीनतम पहले, डुप्लिकेट रहित, अधिकतम 12 */
+    fun clipHistory(): List<String> = readList("clip_history")
+
+    /** पिन किए क्लिप (स्थायी — clear से नहीं मिटते) */
+    fun pinnedClips(): List<String> = readList("clip_pinned")
+
+    private fun readList(key: String): List<String> {
+        val raw = prefs.getString(key, null) ?: return emptyList()
         return try {
             val arr = JSONArray(raw)
             (0 until arr.length()).mapNotNull { i -> arr.optString(i).takeIf { it.isNotEmpty() } }
         } catch (_: Exception) { emptyList() }
     }
 
+    private fun saveList(key: String, items: List<String>) {
+        val arr = JSONArray()
+        items.forEach { arr.put(it) }
+        prefs.edit().putString(key, arr.toString()).apply()
+    }
+
+    /** पिन-टॉगल — पिन हो तो हटाओ, नहीं तो जोड़ो (नवीनतम पहले, अधिकतम 6) */
+    fun togglePin(text: String): Boolean {
+        val pinned = pinnedClips().toMutableList()
+        if (pinned.remove(text)) { saveList("clip_pinned", pinned); return false }
+        pinned.removeAll { it == text }
+        pinned.add(0, text)
+        saveList("clip_pinned", pinned.take(6))
+        return true
+    }
+
     fun recordClip(text: CharSequence?) {
         val t = text?.toString() ?: return
         if (t.isBlank()) return
+        if (pinnedClips().contains(t)) return // पिन-पाठ इतिहास में दोबारा नहीं
         val cur = clipHistory().toMutableList()
         cur.removeAll { it == t }
         cur.add(0, t)
-        saveHistory(cur.take(12))
+        saveList("clip_history", cur.take(12))
     }
 
     fun captureSystemClipboard() {
@@ -143,13 +165,8 @@ class CommandEngine(private val appContext: Context) {
         recordClip(text)
     }
 
-    fun clearClipHistory() { saveHistory(emptyList()) }
-
-    private fun saveHistory(items: List<String>) {
-        val arr = JSONArray()
-        items.forEach { arr.put(it) }
-        prefs.edit().putString("clip_history", arr.toString()).apply()
-    }
+    /** सफ़ाई — केवल बिना-पिन प्रविष्टियाँ (पिन स्थायी रहते हैं) */
+    fun clearClipHistory() { saveList("clip_history", emptyList()) }
 
     /** वर्तमान क्लिपबोर्ड टेक्स्ट (पैनल-सहायक) */
     fun currentClipText(): CharSequence? {

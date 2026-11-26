@@ -24,6 +24,20 @@ class CommandEngineLogicTest {
         assertEquals(0, engine.computeSelectAllLength(""))
     }
 
+    @Test fun `pinned clips survive clear`() {
+        engine.clearClipHistory()
+        engine.recordClip("सामान्य")
+        engine.recordClip("पिन-मैं")
+        engine.togglePin("पिन-मैं")
+        engine.clearClipHistory()
+        assertEquals(listOf("पिन-मैं"), engine.pinnedClips())
+        assertTrue(engine.clipHistory().isEmpty())
+        // टॉगल-हटाओ
+        engine.togglePin("पिन-मैं")
+        assertEquals(0, engine.pinnedClips().size)
+        engine.clearClipHistory()
+    }
+
     @Test fun `clip history records dedupes and caps at 12`() {
         engine.clearClipHistory()
         engine.recordClip("पहला")

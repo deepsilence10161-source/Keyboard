@@ -100,6 +100,21 @@ class ScreenshotTest {
         org.junit.Assert.fail("कीबोर्ड नहीं खुला")
     }
 
+    private fun longTapKey(desc: String) {
+        var attempts = 0
+        while (attempts < 6) {
+            attempts++
+            try {
+                val key = device.wait(Until.findObject(By.desc(desc)), 4000) ?: continue
+                key.longClick()
+                return
+            } catch (e: androidx.test.uiautomator.StaleObjectException) {
+                Thread.sleep(300)
+            }
+        }
+        org.junit.Assert.fail("लंबा-दबाव विफल: $desc")
+    }
+
     private fun closeKb() {
         device.pressBack()
         Thread.sleep(500)
@@ -166,6 +181,11 @@ class ScreenshotTest {
         tapKey("language")
         listOf("k", "a", "i", "s").forEach { tapKey(it) }
         shot("08_hinglish_suggestions.png")
+
+        // 10 — चिह्न-पैनल (लंबा-दबाव 123)
+        longTapKey("123")
+        shot("10_symbols.png")
+        tapKey("back")
 
         // बहाली — डार्क + अंग्रेज़ी
         closeKb()

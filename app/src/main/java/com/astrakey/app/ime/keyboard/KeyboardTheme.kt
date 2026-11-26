@@ -30,6 +30,7 @@ object KeyboardTheme {
         val panelCard: Int,
         val suggMain: Int,
         val suggSide: Int,
+        val stripBg: Int,
         val keyRadiusDp: Float
     )
 
@@ -49,7 +50,8 @@ object KeyboardTheme {
         panelCard = 0xFF2E313A.toInt(),
         suggMain = 0xFFFFFFFF.toInt(),
         suggSide = 0xFFB9BABF.toInt(),
-        keyRadiusDp = 8f
+        stripBg = 0xFF32343C.toInt(),
+        keyRadiusDp = 10f
     )
 
     /** लाइट — वैकल्पिक (सेटिंग्स से) */
@@ -68,7 +70,8 @@ object KeyboardTheme {
         panelCard = 0xFFFFFFFF.toInt(),
         suggMain = 0xFF174EA6.toInt(),
         suggSide = 0xFF3C4043.toInt(),
-        keyRadiusDp = 8f
+        stripBg = 0xFFE4E7ED.toInt(),
+        keyRadiusDp = 10f
     )
 
     /** एमोलेड — शुद्ध-काला (OLED ऊर्जा-बचत) */
@@ -87,7 +90,8 @@ object KeyboardTheme {
         panelCard = 0xFF1E1E1E.toInt(),
         suggMain = 0xFFE8EAED.toInt(),
         suggSide = 0xFF9AA0A6.toInt(),
-        keyRadiusDp = 8f
+        stripBg = 0xFF141414.toInt(),
+        keyRadiusDp = 10f
     )
 
     /** ओशन — नौसेना-नीला गहरा */
@@ -106,7 +110,8 @@ object KeyboardTheme {
         panelCard = 0xFF24344F.toInt(),
         suggMain = 0xFFE0E7EF.toInt(),
         suggSide = 0xFFA9B7C6.toInt(),
-        keyRadiusDp = 8f
+        stripBg = 0xFF152238.toInt(),
+        keyRadiusDp = 10f
     )
 
     fun palette(mode: String): Palette = when (mode) {

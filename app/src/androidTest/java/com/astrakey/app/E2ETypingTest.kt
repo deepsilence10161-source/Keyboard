@@ -385,6 +385,46 @@ class E2ETypingTest {
     }
 
     @Test
+    fun clipPinSurvivesClear() {
+        tapEditText()
+        ensureKeyboardOpen()
+        listOf("h", "e", "l", "l", "o").forEach { tapKey(it) }
+        device.waitForIdle(500)
+        tapKey("Ctrl"); tapKey("a")
+        tapKey("Ctrl"); tapKey("c")
+        tapKey("arrow_right")
+        device.waitForIdle(500)
+        tapKey("clipboard")
+        val entry = device.wait(Until.findObject(By.desc("clip_entry")), 6000)
+        assertNotNull("क्लिप-प्रविष्टि गायब", entry)
+        entry.longClick() // पिन
+        val pinned = device.wait(Until.findObject(By.desc("clip_pinned")), 6000)
+        assertNotNull("पिन नहीं हुआ", pinned)
+        tapKey("clear") // बिना-पिन सफ़ाई
+        Thread.sleep(400)
+        assertNotNull("पिन मिट गया!", device.wait(Until.findObject(By.desc("clip_pinned")), 4000))
+        assertEquals("पिन-रहित शेष होने चाहिए", 0,
+            device.findObjects(By.desc("clip_entry")).size)
+        // स्थिति-सफ़ाई (पिन हटाओ — आगामी परीक्षणों हेतु)
+        val pr = device.wait(Until.findObject(By.desc("clip_pinned")), 3000)
+        pr?.longClick()
+        tapKey("back")
+    }
+
+    @Test
+    fun symbolsPanelViaLongPress123() {
+        tapEditText()
+        ensureKeyboardOpen()
+        longTapKey("123") // लंबा-दबाव → चिह्न-पैनल
+        val at = device.wait(Until.findObject(By.desc("@")), 6000)
+        assertNotNull("चिह्न-पैनल/\u0040 नहीं मिला", at)
+        at.click()
+        device.waitForIdle(600)
+        assertEquals("@", readFieldText())
+        tapKey("back")
+    }
+
+    @Test
     fun toolbarIconsAndArrowRowPresent() {
         tapEditText()
         ensureKeyboardOpen()
