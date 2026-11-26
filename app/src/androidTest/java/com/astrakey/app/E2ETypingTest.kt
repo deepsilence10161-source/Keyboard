@@ -849,7 +849,9 @@ class E2ETypingTest {
         tapEditText()
         ensureKeyboardOpen()
         repeat(2) { tapKey("Ctrl"); tapKey("a"); tapKey("backspace") }
-        // shift-डबल-टैप → LOCK (OFF→ON_ONCE→LOCK)
+        // ऑटो-कैप = खुलने-पर-shift-ON_ONCE-पहले-से — पहले-OFF-तक (2-टैप), फिर-LOCK-तक (2-टैप)
+        tapKey("shift")
+        tapKey("shift")
         tapKey("shift")
         tapKey("shift")
         listOf("a", "b", "c").forEach { tapKey(it) }
@@ -872,7 +874,7 @@ class E2ETypingTest {
         tapEditText()
         ensureKeyboardOpen()
         repeat(2) { tapKey("Ctrl"); tapKey("a"); tapKey("backspace") }
-        listOf("A", "b", "c", "d").forEach { tapKey(it) }
+        listOf("a", "b", "c", "d").forEach { tapKey(it) }
         device.waitForIdle(500)
         // तीर-बाएँ-लंबा-दबाव (2.5s) → रिपीट → कर्सर-आदि-में (4-चर-शब्द < रिपीट-गणना)
         val ak = device.wait(Until.findObject(By.desc("arrow_left")), 4000)
@@ -896,7 +898,7 @@ class E2ETypingTest {
         tapEditText()
         ensureKeyboardOpen()
         repeat(2) { tapKey("Ctrl"); tapKey("a"); tapKey("backspace") }
-        tapKey("A")
+        tapKey("a") // ऑटो-कैप-से-"A" कमिट
         device.waitForIdle(400)
         longTapKey(".") // लंबा-दबाव → "," (SwiftKey-मानक)
         device.waitForIdle(600)
@@ -909,16 +911,12 @@ class E2ETypingTest {
         val ctx = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
         val prefs = ctx.getSharedPreferences("astrakey_prefs", android.content.Context.MODE_PRIVATE)
         prefs.edit().remove("learned_words").commit()
-        tapEditText()
-        ensureKeyboardOpen()
-        // क्षेत्र-इनकॉग्निटो-चिह्नित (ActivityScenario-मुख्य-थ्रेड)
+        // क्षेत्र-इनकॉग्निटो-चिह्नित — कीबोर्ड-खुलने-से-पूर्व (दूसरी-Activity-launch-जाल-से-बचाव)
         androidx.test.core.app.ActivityScenario.launch(com.astrakey.app.MainActivity::class.java).onActivity { act ->
-            val ed = act.findViewById<android.widget.EditText>(com.astrakey.app.R.id.demoEdit)
-            ed.inputType = ed.inputType or android.view.inputmethod.EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING
+            act.findViewById<android.widget.EditText>(com.astrakey.app.R.id.demoEdit)
+                .inputType = android.text.InputType.TYPE_CLASS_TEXT or
+                android.view.inputmethod.EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING
         }
-        // कीबोर्ड-पुनर्आरंभ (onStartInputView-फ़्लैग-पढ़ना)
-        device.pressBack()
-        Thread.sleep(400)
         tapEditText()
         ensureKeyboardOpen()
         // "flurb" टाइप + स्पेस — सीखना-होना-चाहिए-बंद
