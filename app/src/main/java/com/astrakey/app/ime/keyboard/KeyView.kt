@@ -152,7 +152,9 @@ class KeyView @JvmOverloads constructor(
                 if (hapticEnabled) performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                 if (key.action == KeyAction.BACKSPACE) {
                     startRepeat()
-                } else {
+                } else if (key.alt != null || key.action == KeyAction.SPACE || key.action == KeyAction.NUMBER_TOGGLE) {
+                    // लंबा-दबाव केवल-सार्थक-कीज़-पर अनुसूचित — alt-शून्य-कीज़ (अक्षर/सेवा) पर
+                    // CI-लोग-धीमा-टैप = लंबा-दबाव-मिसफायर = टैप-निगलना-जाल (रन 45864657547 का मूल-कारण)
                     scheduleAlt()
                 }
             }

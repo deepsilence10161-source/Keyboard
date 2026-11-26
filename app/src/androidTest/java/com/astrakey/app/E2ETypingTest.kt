@@ -40,7 +40,10 @@ class E2ETypingTest {
             attempts++
             try {
                 val key = device.wait(Until.findObject(By.desc(desc)), 4000) ?: continue
-                key.click()
+                // तीव्र-swipe-टैप (~40ms) — UiObject2.click() CI-लोग-में 450ms+ देर हो सकता है
+                // → KeyView लंबा-दबाव-मिसफायर → टैप-निगलना (स्थायी-जाल, कच्चा-तीव्र-स्पर्श-अनिवार्य)
+                val b = key.visibleBounds
+                device.swipe(b.centerX(), b.centerY(), b.centerX(), b.centerY(), 2, 40)
                 return
             } catch (e: androidx.test.uiautomator.StaleObjectException) {
                 Thread.sleep(300)
