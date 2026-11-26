@@ -10,6 +10,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
+import org.junit.After
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -32,6 +33,14 @@ class E2ETypingTest {
             .putString("lang_mode", "en").putBoolean("autocorrect", true).commit()
         ActivityScenario.launch(MainActivity::class.java)
         device.waitForIdle(3000)
+    }
+
+    @After
+    fun alphabetPanelGuard() {
+        // पैनल-रिसाव-रक्षा — SYMBOLS/अन्य-पैनल-खुला हो तो अक्षर-पैनल-बहाल (अगले-परीक्षण-हेतु)
+        try {
+            if (device.hasObject(By.desc("back"))) tapKey("back")
+        } catch (_: Exception) { }
     }
 
     private fun tapKey(desc: String) {
@@ -225,8 +234,12 @@ class E2ETypingTest {
         // देवनागरी सुझाव दिखे और टैप पर क्षेत्र में बदले
         val sugg = device.wait(Until.findObject(By.desc("नमस्ते")), 5000)
         if (sugg == null) {
+            // पूर्ण-लॉग-फ़ाइल-चैनल (Gradle-लंबी-पंक्ति-कटौती-जाल-रक्षा) — ci.yml-diag adb-pull-करता-है
+            device.executeShellCommand("mkdir -p /sdcard/Download/AstraKey")
+            device.executeShellCommand("logcat -d -s AstraKeyUI > /sdcard/Download/AstraKey/hinglish_fail.log 2>&1")
             val logs = device.executeShellCommand("logcat -d -s AstraKeyUI")
-            org.junit.Assert.fail("नमस्ते सुझाव नहीं मिला | logs-tail=${logs.takeLast(12000)}")
+            val last = logs.split("\n").filter { it.contains("AstraKeyUI") }.takeLast(2).joinToString(" || ")
+            org.junit.Assert.fail("नमस्ते सुझाव नहीं मिला | $last | पूर्ण=hinglish_fail.log")
         }
         sugg?.click()
         device.waitForIdle(800)
