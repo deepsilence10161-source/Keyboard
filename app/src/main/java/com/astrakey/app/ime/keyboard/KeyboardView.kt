@@ -677,6 +677,20 @@ class KeyboardView(
                     if (System.currentTimeMillis() - padToggledAt < 800) return
                     cursorPad = false; rebuildAll(); return
                 }
+                // ऑटो-सुधार (v0.11.0): शब्दकोश-बाह्य-शब्द + स्पेस → निकटतम-सामान्य-शब्द
+                if (langMode == "en" && prefs.getBoolean("autocorrect", true)) {
+                    val w = currentWord()
+                    if (w.length >= 4) {
+                        val fix = engine.bestCorrection(w)
+                        if (fix != null && fix != w.lowercase()) {
+                            val capped = if (w[0].isUpperCase()) fix.replaceFirstChar { it.uppercaseChar() } else fix
+                            icProvider()?.deleteSurroundingText(w.length, 0)
+                            commit(capped + " ")
+                            updateSuggestionsAfterSpace()
+                            return
+                        }
+                    }
+                }
                 // डबल-स्पेस → पूर्णविराम (मानक-IME: अक्षर+स्पेस के बाद दूसरा-स्पेस ". " बनता है)
                 val ic = icProvider()
                 val before2 = ic?.getTextBeforeCursor(2, 0)

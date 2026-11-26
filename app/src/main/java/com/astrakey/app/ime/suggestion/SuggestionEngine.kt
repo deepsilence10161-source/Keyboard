@@ -108,4 +108,49 @@ class SuggestionEngine {
 
     /** जेस्चर-विघटन हेतु शब्दकोश (शब्द → आवृत्ति) */
     val wordsWithFreq: Map<String, Int> get() = english
+
+    // ---------- ऑटो-सुधार (v0.11.0) — संपादन-दूरी (Levenshtein) ----------
+
+    /** Levenshtein-दूरी (छोटे-शब्द — DP पर्याप्त) */
+    fun editDistance(a: String, b: String): Int {
+        if (a == b) return 0
+        val m = a.length; val n = b.length
+        if (m == 0) return n
+        if (n == 0) return m
+        var prev = IntArray(n + 1) { it }
+        val cur = IntArray(n + 1)
+        for (i in 1..m) {
+            cur[0] = i
+            for (j in 1..n) {
+                val cost = if (a[i - 1] == b[j - 1]) 0 else 1
+                cur[j] = minOf(cur[j - 1] + 1, prev[j] + 1, prev[j - 1] + cost)
+            }
+            System.arraycopy(cur, 0, prev, 0, n + 1)
+        }
+        return prev[n]
+    }
+
+    /**
+     * सर्वश्रेष्ठ-सुधार — टाइप-शब्द शब्दकोश-बाह्य हो तो निकटतम-सामान्य-शब्द:
+     * लंबाई≥6 पर दूरी≤2, अन्यथा ≤1; आवृत्ति-दहलीज़ (दूरी1 ≥40, दूरी2 ≥55);
+     * विश्वास-न्यून हुए null (कोई-सुधार नहीं — शब्द जैसा-है-वैसा)।
+     */
+    fun bestCorrection(typed: String): String? {
+        val p = typed.trim().lowercase()
+        if (p.length < 4 || english.containsKey(p)) return null
+        var best: String? = null
+        var bestDist = Int.MAX_VALUE
+        var bestFreq = 0
+        val maxDist = if (p.length >= 6) 2 else 1
+        for ((w, f) in english) {
+            val d = editDistance(p, w)
+            if (d > maxDist || d == 0) continue
+            val freqFloor = if (d == 1) 40 else 55
+            if (f < freqFloor) continue
+            if (d < bestDist || (d == bestDist && f > bestFreq)) {
+                best = w; bestDist = d; bestFreq = f
+            }
+        }
+        return best
+    }
 }

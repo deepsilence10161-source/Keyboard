@@ -54,4 +54,34 @@ class SuggestionEngineTest {
         assertNotNull(engine.transliterate("dhanyavad"))
         assertEquals("धन्यवाद", engine.transliterate("dhanyavad"))
     }
+
+    // ---------- ऑटो-सुधार (v0.11.0) ----------
+
+    @Test fun `correction helo to hello`() {
+        assertEquals("hello", engine.bestCorrection("helo"))
+    }
+
+    @Test fun `correction teh to the`() {
+        assertEquals("the", engine.bestCorrection("teh"))
+    }
+
+    @Test fun `correction wrold to world`() {
+        assertEquals("world", engine.bestCorrection("wrold"))
+    }
+
+    @Test fun `in dict word no correction`() {
+        assertEquals(null, engine.bestCorrection("hello"))
+        assertEquals(null, engine.bestCorrection("water"))
+    }
+
+    @Test fun `gibberish no confident correction`() {
+        assertEquals(null, engine.bestCorrection("zqxj"))
+        assertEquals(null, engine.bestCorrection("qqqqq"))
+    }
+
+    @Test fun `edit distance basic`() {
+        assertEquals(0, engine.editDistance("same", "same"))
+        assertEquals(1, engine.editDistance("helo", "hello"))
+        assertEquals(2, engine.editDistance("thier", "their"))
+    }
 }

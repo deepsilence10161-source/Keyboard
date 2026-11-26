@@ -29,7 +29,7 @@ class E2ETypingTest {
         androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
             .getSharedPreferences("astrakey_prefs", android.content.Context.MODE_PRIVATE)
             .edit().putString("ui_mode", "full").putInt("float_top", 0).putInt("float_tx", 0)
-            .putString("lang_mode", "en").commit()
+            .putString("lang_mode", "en").putBoolean("autocorrect", true).commit()
         ActivityScenario.launch(MainActivity::class.java)
         device.waitForIdle(3000)
     }
@@ -682,5 +682,17 @@ class E2ETypingTest {
         tapKey("x")
         device.waitForIdle(600)
         assertEquals("Abxc", readFieldText())
+    }
+
+    @Test
+    fun autocorrectFixesTypoOnSpace() {
+        tapEditText()
+        ensureKeyboardOpen()
+        // "helo" टाइप (शब्दकोश-बाह्य) + स्पेस → ऑटो-सुधार "hello"
+        listOf("h", "e", "l", "o").forEach { tapKey(it) }
+        device.waitForIdle(600)
+        tapKey("spacebar")
+        device.waitForIdle(1000)
+        assertEquals("Hello ", readFieldText())
     }
 }

@@ -38,6 +38,7 @@ class ScreenshotTest {
         setStr("ui_mode", "full")
         setStr("theme_name", "dark")
         setStr("lang_mode", "en")
+        setPref("autocorrect", true)
         ActivityScenario.launch(MainActivity::class.java)
         device.waitForIdle(3000)
     }

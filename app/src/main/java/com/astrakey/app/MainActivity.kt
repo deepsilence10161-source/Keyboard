@@ -38,6 +38,7 @@ class MainActivity : AppCompatActivity() {
         bindSwitch(R.id.switchArrows, "arrow_row", true)
         bindSwitch(R.id.switchHaptic, "haptic", true)
         bindSwitch(R.id.switchGesture, "gesture_on", true)
+        bindSwitch(R.id.switchAutoCorrect, "autocorrect", true)
 
         val prefs = getSharedPreferences("astrakey_prefs", MODE_PRIVATE)
         val current = prefs.getString("theme_name", null)
