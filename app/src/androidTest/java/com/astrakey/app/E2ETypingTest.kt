@@ -43,7 +43,8 @@ class E2ETypingTest {
                 // तीव्र-swipe-टैप (~40ms) — UiObject2.click() CI-लोग-में 450ms+ देर हो सकता है
                 // → KeyView लंबा-दबाव-मिसफायर → टैप-निगलना (स्थायी-जाल, कच्चा-तीव्र-स्पर्श-अनिवार्य)
                 val b = key.visibleBounds
-                device.swipe(b.centerX(), b.centerY(), b.centerX(), b.centerY(), 2, 40)
+                val c = android.graphics.Point(b.centerX(), b.centerY())
+                device.swipe(arrayOf(c, c), 40)
                 return
             } catch (e: androidx.test.uiautomator.StaleObjectException) {
                 Thread.sleep(300)
